@@ -13,29 +13,31 @@ The real product is the *content* (funny matchups, names, captions); the engine 
 - Open `index.html` directly in a browser to play, or `npx serve` for a local server.
 
 ## THE GOLDEN RULE — balance
-**Every matchup must last longer than 60 seconds** (sub-60s videos earn $0 on TikTok), be **bounded** (~110s max, no timeouts/draws), and ideally swing between runs. After ANY change that touches mechanics, run:
+**Every matchup must last longer than 60 seconds** (sub-60s videos earn $0 on TikTok), be **bounded** (~110s max, no timeouts/draws), and ideally swing between runs. The balance harness checks this:
 
 ```
 node tools/validate.js
 ```
 
-It prints each ability's mirror-match survival times and must show `all mirrors min>=60s: true`. If anything drops below 60 or runs to the cap, retune before committing.
+It prints each ability's mirror-match survival times and must show `all mirrors min>=60s: true`. If anything drops below 60 or runs to the cap, retune.
 
-**Balance-neutral changes** (sprites, names, colors, sounds, UI text, copy) do NOT need re-validation. **Mechanic changes** (ability params, enemy HP/speed/damage, wave growth, spawn rate, the attrition drain, ult threshold, hero HP) DO.
+**Workflow note (maintainer preference):** do NOT run `validate.js` automatically — the sim is slow. Make the change and ship it; the maintainer will ask for a balance check when they want one. If a change clearly risks breaking balance, flag it in the summary so they can decide.
+
+**Balance-neutral changes** (sprites, names, colors, sounds, UI text, copy) do NOT need re-validation. **Mechanic changes** (ability params, enemy HP/speed/damage, wave growth, spawn rate, enemy HP scaling, ult threshold, hero HP) DO — but still only run the sim on request.
 
 ## Architecture / current design
 - **Survival model**: boss spawns at the top of each lane at match start, is `invuln:true` (never damaged — abilities ignore it; `b` is nulled inside `ability()` so attacks target minions, never the boss).
 - **Enemies**: spawn in **waves** that start small (~2) and grow (up to ~30), gaps tighten over time. They home straight at the hero with light **separation** so they don't overlap. Grunts have 2 HP, elites 12, bear cubs 6. Rendered as bear emoji at the cave; cubs/poop are boss-spawned and charge directly.
-- **Escalation**: waves grow → eventually overwhelm whoever clears slower. A late **attrition drain** (after ~70s, ramps hard) guarantees even a perfect-clearing hero falls by ~110s, so there are no timeouts.
+- **Escalation**: death is **enemy-driven** (the old post-70s attrition HP drain was removed). Waves grow bigger and tighter, enemy **speed ramps hard** (mid ramp after ~30s + a steep late wall), and enemies **gain HP over time** (after ~50s) so AOE can't hold the line forever. Together these overwhelm even a perfect clearer by ~120s — no timeouts.
 - **Ult**: fires once at **10% HP** as a last-stand (heal + clear + buff).
 - **KO**: on death, `beginKO()` sets a ~1.6s sequence (loser's side darkens, 💀 rises, "K.O." stamp, death sting) before `end()` shows the survivor screen. Recording stops on the winner, so the KO is captured.
 - **Custom SFX**: upload panel keyed by sound function (`zap`, `fart`, `frog`, `ult`, `roar`, `hit`, `win`, `ko`). Uploaded clips decode to AudioBuffers and play through `master` → captured in recordings. Gasbag's attack IS `sFart()`, so the "Fart" slot is the fart-for-Gasbag joke.
 
 ## Key tuning levers (in `cfg` defaults and `stepLane`/`simTick`)
 - Hero HP (`cfg.A.hp`/`cfg.B.hp`) — global length multiplier.
-- Wave growth `waveN=Math.min(30,2+Math.floor(elapsed*0.30))` and `gap`.
-- Enemy speed `spd`, enemy `cfg.edmg`, enemy/elite/cub HP in `spawnEnemy`/boss step.
-- Attrition drain (`if(elapsed>70) L.hp -= ...`).
+- Wave growth `waveN` (cap + `Math.floor(elapsed*…)`), `gap` floor, and the on-field enemy cap — all in `stepLane`.
+- Enemy speed ramp `spd` (the `Math.max(0,elapsed-…)*…` terms — main game-length lever), enemy `cfg.edmg`.
+- Enemy HP scaling `ghp` in `spawnEnemy` (grunt/elite base + growth after ~50s); cub HP in boss step.
 - `ULT_THRESH` (0.10), `SURV_CAP` (160 safety).
 
 ## Editing gotchas

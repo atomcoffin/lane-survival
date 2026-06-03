@@ -501,7 +501,7 @@
     L.waveT-=FIXED/1000;
     if(L.waveT<=0 && L.enemies.length<160){ var waveN=Math.min(60,2+Math.floor(elapsed*0.50)), gap=Math.max(0.30,2.0-elapsed*0.024);
       for(var wn=0;wn<waveN;wn++) spawnEnemy(L); L.waveT=gap; }
-    var spd=cfg.espd*0.62*(1+Math.max(0,elapsed-35)*0.011+Math.max(0,elapsed-80)*0.120);
+    var spd=cfg.espd*0.62*(1+Math.max(0,elapsed-30)*0.018+Math.max(0,elapsed-65)*0.150);
     for(var i=L.enemies.length-1;i>=0;i--){ var en=L.enemies[i]; if(en.flash>0)en.flash--;
       var dx=L.cx-en.x,dy=L.hy-en.y,dist=Math.hypot(dx,dy)||1,ux=dx/dist,uy=dy/dist,sp2=spd*(en.sm||1),sway=Math.sin(elapsed*(en.sf||2)+(en.ph||0))*(en.sw||0.4);
       en.x+=ux*sp2-uy*sway; en.y+=uy*sp2+ux*sway;
@@ -595,9 +595,11 @@
       if(L.hole){ var hx=L.hole.x,hy=L.hole.y; for(var s=0;s<3;s++){var rr2=18+s*9; ctx.beginPath(); ctx.arc(hx,hy,rr2,L.hole.ang+s,L.hole.ang+s+4.5); ctx.strokeStyle=L.color; ctx.globalAlpha=0.6-s*0.15; ctx.lineWidth=6; ctx.stroke();} ctx.globalAlpha=1; ctx.beginPath(); ctx.arc(hx,hy,16,0,Math.PI*2); ctx.fillStyle='#000'; ctx.fill(); ctx.strokeStyle=L.color; ctx.lineWidth=3; ctx.stroke(); }
       // fart cloud
       if(L.ability==='FART'&&L.wave>0&&!L.dead){ var fade=Math.max(0,1-L.wave/(L.w*1.3)); var puffs=16;
+        // gas puff at the source (the butt)
+        ctx.beginPath(); ctx.arc(L.cx,L.hy+30,L.params.thickness*1.7,0,Math.PI*2); ctx.fillStyle='rgba(198,204,72,0.20)'; ctx.fill();
         for(var pf=0;pf<puffs;pf++){ var ang=pf/puffs*Math.PI*2 + L.wave*0.012; var px=L.cx+Math.cos(ang)*L.wave, py=L.hy+Math.sin(ang)*L.wave; var rad=L.params.thickness*1.5 + Math.sin(L.wave*0.08+pf)*10;
-          ctx.beginPath(); ctx.arc(px,py,rad,0,Math.PI*2); ctx.fillStyle='rgba(150,190,70,'+(0.18*fade)+')'; ctx.fill();
-          ctx.beginPath(); ctx.arc(px,py,rad*0.6,0,Math.PI*2); ctx.fillStyle='rgba(120,160,50,'+(0.16*fade)+')'; ctx.fill(); } }
+          ctx.beginPath(); ctx.arc(px,py,rad,0,Math.PI*2); ctx.fillStyle='rgba(190,200,72,'+(0.18*fade)+')'; ctx.fill();
+          ctx.beginPath(); ctx.arc(px,py,rad*0.6,0,Math.PI*2); ctx.fillStyle='rgba(140,128,46,'+(0.16*fade)+')'; ctx.fill(); } }
       // lingering mist
       if(L.mist.length){ for(var mq=0;mq<L.mist.length;mq++){ var msp=L.mist[mq], mfade=Math.min(1,msp.life/150); ctx.beginPath(); ctx.arc(msp.x,msp.y,msp.r,0,Math.PI*2); ctx.fillStyle='rgba(140,180,60,'+(0.10*mfade)+')'; ctx.fill(); } }
       // enemies
@@ -723,7 +725,13 @@
         for(var hrr=midR;hrr<=hr1;hrr++) for(var hcc=hc0;hcc<=hc1;hcc++) plot(hcc,hrr,'#',L.color);
         var hspan=hc1-hc0; for(var hfk=0;hfk<5;hfk++){ var hfx2=hc0+Math.round(hspan*hfk/4); for(var hrr2=hr0;hrr2<midR;hrr2++) plot(hfx2,hrr2,'#',L.color); } }
       if(L.ability==='FART'&&L.wave>0&&!L.dead){ var rad=L.wave, band=P.thickness, maxR=L.w*1.1;
-        var gl=['o','O','*','%','@','&','.',':'], tnow=Math.floor(elapsed*10);
+        var gl=['s','o','O','c','~','.',':','o'], tnow=Math.floor(elapsed*10);
+        // dense gas puff clinging to the source (the butt) so it reads as emanating from the hero
+        var srcY=L.hy+cellH*1.1, srcR=band*1.85, sc0=w2c(L.cx-srcR),sc1=w2c(L.cx+srcR),sr0=w2r(srcY-srcR),sr1=w2r(srcY+srcR);
+        for(var sr2=sr0;sr2<=sr1;sr2++)for(var sc2=sc0;sc2<=sc1;sc2++){ var spx=sc2*cellW+cellW/2,spy=sr2*cellH+cellH/2,sdd=Math.hypot(spx-L.cx,spy-srcY); if(sdd>srcR)continue;
+          var sh=Math.sin(sc2*19.3+sr2*7.7+tnow*0.9)*6151.7; sh=sh-Math.floor(sh); if(sh>(1-sdd/srcR)*0.78)continue;
+          plot(sc2,sr2,gl[Math.floor(sh*8)%gl.length], sh>0.5?'#c6cc48':'#8a7a2e'); }
+        // expanding billow
         var c0=w2c(L.cx-rad-band),c1=w2c(L.cx+rad+band),r0=w2r(L.hy-rad-band),r1=w2r(L.hy+rad+band);
         for(var r=r0;r<=r1;r++)for(var c=c0;c<=c1;c++){
           var ccx=c*cellW+cellW/2, ccy=r*cellH+cellH/2, dx=ccx-L.cx, dy=ccy-L.hy, dd=Math.hypot(dx,dy);
@@ -733,7 +741,7 @@
           var depth=(front-dd)/(band*3.2), pot=Math.max(0,1-dd/maxR);
           var h=Math.sin(c*12.9898+r*78.233+tnow*0.7)*43758.5453; h=h-Math.floor(h);
           if(h > pot*0.8+depth*0.45) continue;
-          var col=pot>0.62?'#b6e85f':(pot>0.34?'#86c23f':'#5d8a31');
+          var col=pot>0.62?'#c6cc48':(pot>0.34?'#94a338':'#6f6a2b');
           plot(c,r,gl[(Math.floor(h*8+depth*5))%gl.length],col);
         }
       }
