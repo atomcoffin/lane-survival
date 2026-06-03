@@ -373,6 +373,7 @@
   for(var _ci=0;_ci<CHARACTERS.length;_ci++){ CHARACTERS[_ci].art=SPRITES[CHARACTERS[_ci].name]||null; }
   var CAVE={w:27,rows:["         _________         ", "      _-'         '-_      ", "    _/               \\_    ", "   /                   \\   ", "  /                     \\  ", " Y|                     |Y ", "v*o.                   .o*v"]};
   var BENEMY={bear:'\ud83d\udc3b'};
+  var BELITE={bear:'\ud83d\udc17'};  /* elite grunt emoji per boss kind (\ud83d\udc17); falls back to \ud83d\udc79 */
   var ENTRANCES={
     cave:{body:['#6b7075','#7d828a','#8f949c'],rim:'#b8bdc4',deco:'cave'},
     butt:{body:['#d99a6e','#e8b894','#f0c3a0'],rim:'#b07a52',deco:'butt'},
@@ -701,10 +702,11 @@
       drawEntrance(L);
       occ={}; e.sort(function(p,q){return q.y-p.y;});
       var ech=cfg.enemyChar||'&'; var bk0=(BOSSES[cfg.bossIdx]||{}).kind; if(bk0&&BENEMY[bk0]&&(cfg.enemyChar==='&'||!cfg.enemyChar)) ech=BENEMY[bk0];
+      var eech=(bk0&&BELITE[bk0])?BELITE[bk0]:'\ud83d\udc79';
       for(i=0;i<e.length;i++){ var en=e[i];
-        var gch=en.poop?'\ud83d\udca9':(en.cub?'\ud83d\udc3b':(en.elite?(en.hp>7?'@':(en.hp>3?'O':'o')):ech));
+        var gch=en.poop?'\ud83d\udca9':(en.cub?'\ud83d\udc3b':(en.elite?eech:ech));
         var ge=gch.length>1||gch.codePointAt(0)>0x2100;
-        if(ge){ var esz=Math.ceil(cellH*(en.cub?2.0:(en.poop?1.35:1.55))); ctx.font='700 '+esz+'px "JetBrains Mono",sans-serif'; ctx.fillStyle='#ffffff'; ctx.fillText(gch, en.x, en.y); }
+        if(ge){ var esz=Math.ceil(cellH*(en.cub?2.0:(en.poop?1.35:(en.elite?1.95:1.55)))); ctx.font='700 '+esz+'px "JetBrains Mono",sans-serif'; ctx.fillStyle='#ffffff'; ctx.fillText(gch, en.x, en.y); }
         else { ctx.font='700 '+Math.ceil(cellH*1.3)+'px "JetBrains Mono",monospace'; ctx.fillStyle=en.flash>0?'#ffffff':(en.elite?'#ffd60a':'#ff6b5e'); ctx.fillText(gch, en.x, en.y); } }
       ctx.font='700 '+Math.ceil(cellH*0.95)+'px "JetBrains Mono",monospace';
       for(var ksr=0;ksr<L.skeletons.length;ksr++){ var skk=L.skeletons[ksr],skc=w2c(skk.x),skr=w2r(skk.y); plot(skc,skr,'A','#ece8d6'); plot(skc,skr-1,'o','#ece8d6'); }
