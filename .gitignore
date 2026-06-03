@@ -1,0 +1,17 @@
+# dependencies (none currently, but in case you add tooling)
+node_modules/
+package-lock.json
+
+# exported gameplay clips
+*.webm
+*.mp4
+
+# os / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# env / secrets
+.env
+.env.*
