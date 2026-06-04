@@ -386,7 +386,7 @@
     return {side:side,name:conf.name||side,color:conf.color,ability:ab,params:prm,x0:x0,w:w,cx:x0+w/2,hy:H*0.86,r:46,
       hp:conf.hp,maxhp:conf.hp,kills:0,dmg:0,spawned:0,toSpawn:cfg.count,waveT:0.5,
       enemies:[],skeletons:[],fx:[],projectiles:[],pucks:[],mist:[],mistCd:0,orbAng:0,beamAng:-Math.PI/2,cd:0,nukeFlash:0,nukeR:200,tracer:null,
-      wave:-1, fartGap:0, actPulse:0, hole:null, hand:null, hand2:null, cd2:null, chainPts:null, chainLife:0, fig:(conf.char!=null&&CHARACTERS[conf.char]?CHARACTERS[conf.char].fig:makeHumanoid()), figArt:(conf.char!=null&&CHARACTERS[conf.char]&&CHARACTERS[conf.char].art?CHARACTERS[conf.char].art:null), blinkSeed:Math.random()*6.28,
+      wave:-1, fartGap:0, actPulse:0, hole:null, hand:null, hand2:null, cd2:null, pads:[], chainPts:null, chainLife:0, fig:(conf.char!=null&&CHARACTERS[conf.char]?CHARACTERS[conf.char].fig:makeHumanoid()), figArt:(conf.char!=null&&CHARACTERS[conf.char]&&CHARACTERS[conf.char].art?CHARACTERS[conf.char].art:null), blinkSeed:Math.random()*6.28,
       boss:null, bossDead:false, dead:false, cleared:false,
       ultReady:true, ulted:false, ultT:0, ultFlash:0, ultBannerT:0, ultName:(conf.char!=null&&CHARACTERS[conf.char]?ULTS[CHARACTERS[conf.char].name]:'OVERDRIVE')}; }
   function reset(){ cancelAnimationFrame(raf); running=false; finished=false; winnerSide=null; elapsed=0; countdown=0; phase='survive'; alertT=0; callouts=[]; koMile=0; lastLead=null; ko=null;
@@ -441,7 +441,13 @@
     else if(L.ability==='FROG TONGUE'){ L.cd-=1; if(L.cd<=0&&(e.length||b)){ var jumps=Math.round(P.jumps),range=P.range*P.range; var pts=[{x:L.cx,y:L.hy-L.r}],last=pts[0];
         for(var jmp=0;jmp<jumps;jmp++){ var biC=-1,bddC=range; for(i=0;i<e.length;i++){var qx=e[i].x-last.x,qy=e[i].y-last.y,q=qx*qx+qy*qy;if(q<bddC){bddC=q;biC=i;}}
           if(biC>=0){pts.push({x:e[biC].x,y:e[biC].y});last=pts[pts.length-1];killAt(L,biC);} else break; }
-        if(b){pts.push({x:b.x,y:b.y});dmgBoss(L,P.bossDmg);} if(pts.length>1){L.chainPts=pts;L.chainLife=7;sFrog();L.actPulse=8;} L.cd=Math.max(4,P.cooldown/ramp);} }
+        if(b){pts.push({x:b.x,y:b.y});dmgBoss(L,P.bossDmg);} if(pts.length>1){L.chainPts=pts;L.chainLife=7;sFrog();L.actPulse=8;} L.cd=Math.max(4,P.cooldown/ramp);}
+      // AMPLIFY ult: each deployed lily pad is its own auto-firing tongue turret
+      if(L.ulted && L.pads.length){ var padR2=P.range*P.range*1.6;
+        for(var pp=0;pp<L.pads.length;pp++){ var pad=L.pads[pp]; if(pad.fire>0)pad.fire--; pad.cd--;
+          if(pad.cd<=0){ var bi2=-1,bd2=padR2; for(i=0;i<e.length;i++){ var qx2=e[i].x-pad.x,qy2=e[i].y-pad.y,q2=qx2*qx2+qy2*qy2; if(q2<bd2){bd2=q2;bi2=i;} }
+            if(bi2>=0){ pad.tgt={x:e[bi2].x,y:e[bi2].y}; pad.fire=6; killAt(L,bi2); sFrog(); pad.cd=Math.round(16+Math.random()*10); } else pad.cd=8; } } }
+    }
     else if(L.ability==='FART'){
       // DUTCH OVEN ult: lingering gas mist that chips anything standing in it (damage over time)
       if(L.mist.length){ for(var mi=L.mist.length-1;mi>=0;mi--){ var ms=L.mist[mi]; ms.life--; if(ms.life<=0){ L.mist.splice(mi,1); continue; }
@@ -555,6 +561,8 @@
           for(var cl=0;cl<clones.length;cl++) L.pucks.push(clones[cl]); } }
       // NECROMANCY: raise an army at once (and from here on, slain enemies rise as skeletons)
       if(L.ability==='SKELETON'){ for(var na=0;na<18;na++) raiseSkeleton(L, L.x0+22+Math.random()*(L.w-44), L.hy-40-Math.random()*L.params.lineDist); }
+      // AMPLIFY: deploy a spread of lily pads, each an auto-firing tongue turret
+      if(L.ability==='FROG TONGUE'){ L.pads=[]; for(var lp=0;lp<5;lp++) L.pads.push({x:L.x0+50+Math.random()*(L.w-100), y:FIELD_TOP+170+Math.random()*(L.hy-FIELD_TOP-300), cd:Math.round(lp*5), fire:0, tgt:null}); }
     }
     if(L.actPulse>0) L.actPulse--;
     if(L.ultFlash>0) L.ultFlash-=0.06;
@@ -630,6 +638,9 @@
           ctx.beginPath(); ctx.arc(px,py,rad*0.6,0,Math.PI*2); ctx.fillStyle='rgba(140,128,46,'+(0.16*fade)+')'; ctx.fill(); } }
       // lingering mist
       if(L.mist.length){ for(var mq=0;mq<L.mist.length;mq++){ var msp=L.mist[mq], mfade=Math.min(1,msp.life/150); ctx.beginPath(); ctx.arc(msp.x,msp.y,msp.r,0,Math.PI*2); ctx.fillStyle='rgba(140,180,60,'+(0.10*mfade)+')'; ctx.fill(); } }
+      // lily pads (AMPLIFY)
+      if(L.ability==='FROG TONGUE' && L.pads.length){ for(var pp=0;pp<L.pads.length;pp++){ var pad=L.pads[pp]; ctx.beginPath(); ctx.arc(pad.x,pad.y,22,0.45,Math.PI*2+0.45-0.9); ctx.lineTo(pad.x,pad.y); ctx.closePath(); ctx.fillStyle='#4e9e3f'; ctx.fill(); ctx.beginPath(); ctx.arc(pad.x,pad.y,10,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.fill();
+        if(pad.fire>0 && pad.tgt){ ctx.strokeStyle='#ff6fae'; ctx.lineWidth=6; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(pad.x,pad.y); ctx.lineTo(pad.tgt.x,pad.tgt.y); ctx.stroke(); } } }
       // enemies
       for(var i=0;i<L.enemies.length;i++){var e=L.enemies[i]; ctx.beginPath(); ctx.arc(e.x,e.y,e.r,0,Math.PI*2); ctx.fillStyle='#e8e8e8'; ctx.fill(); ctx.fillStyle='rgba(255,59,48,0.9)'; ctx.beginPath(); ctx.arc(e.x,e.y,e.r*0.5,0,Math.PI*2); ctx.fill();}
       // projectiles
@@ -790,6 +801,10 @@
       if(L.hole){ var ang0=L.hole.ang; for(var sp=0;sp<28;sp++){ var rr3=5+sp*1.55, aa=ang0+sp*0.62, gx=L.hole.x+Math.cos(aa)*rr3, gy=L.hole.y+Math.sin(aa)*rr3; plot(w2c(gx),w2r(gy),(sp&1?'*':'@'),L.color); } plot(w2c(L.hole.x),w2r(L.hole.y),'@','#02040a'); }
       if(L.ability==='BEAM'&&!L.dead&&running){ var bca=Math.cos(L.beamAng),bsa=Math.sin(L.beamAng),bpx=-bsa,bpy=bca,boff=Math.max(cellW,cellH)*0.9; line(L.cx,L.hy,L.cx+bca*900,L.hy+bsa*900,'|',L.color); line(L.cx+bpx*boff,L.hy+bpy*boff,L.cx+bca*900+bpx*boff,L.hy+bsa*900+bpy*boff,':',L.color); line(L.cx-bpx*boff,L.hy-bpy*boff,L.cx+bca*900-bpx*boff,L.hy+bsa*900-bpy*boff,':',L.color); }
       if(L.ability==='ORBIT'&&!L.dead){var orbs=P.orbs,R=L.r+P.radius;for(var k=0;k<orbs;k++){var a=L.orbAng+k*(Math.PI*2/orbs);plot(w2c(L.cx+Math.cos(a)*R),w2r(L.hy+Math.sin(a)*R),'o',L.color);}}
+      if(L.ability==='FROG TONGUE' && L.pads.length){ var padCol='#5fb84a';
+        for(var pp=0;pp<L.pads.length;pp++){ var pad=L.pads[pp], prr=22, pc0=w2c(pad.x-prr),pc1=w2c(pad.x+prr),pr0=w2r(pad.y-prr),pr1=w2r(pad.y+prr);
+          for(var pry=pr0;pry<=pr1;pry++)for(var prx=pc0;prx<=pc1;prx++){ var ppx=prx*cellW+cellW/2,ppy=pry*cellH+cellH/2,pdd=Math.hypot(ppx-pad.x,ppy-pad.y); if(pdd>prr)continue; var pang=Math.atan2(ppy-pad.y,ppx-pad.x); if(pang>0.45&&pang<1.35)continue; /* notch */ plot(prx,pry,(pdd>prr*0.62?'o':':'),padCol); }
+          if(pad.fire>0 && pad.tgt){ line(pad.x,pad.y,pad.tgt.x,pad.tgt.y,'~','#ff6fae'); plot(w2c(pad.tgt.x),w2r(pad.tgt.y),'O','#ff6fae'); } } }
       if(L.chainPts&&L.chainLife>0){ var TC='#ff6fae'; for(var cI=1;cI<L.chainPts.length;cI++)line(L.chainPts[cI-1].x,L.chainPts[cI-1].y,L.chainPts[cI].x,L.chainPts[cI].y,'~',TC); var ttip=L.chainPts[L.chainPts.length-1]; plot(w2c(ttip.x),w2r(ttip.y),'O',TC); }
       if(L.tracer){ line(L.cx,L.hy-L.r,L.tracer.x,L.tracer.y,'=',L.color); var tc=w2c(L.tracer.x),tr=w2r(L.tracer.y); plot(tc,tr,'*','#ffffff'); plot(tc+1,tr,'+',L.color); plot(tc-1,tr,'+',L.color); plot(tc,tr-1,'+',L.color); plot(tc,tr+1,'+',L.color); }
       for(i=0;i<L.projectiles.length;i++){ var pj=L.projectiles[i],psp=Math.hypot(pj.vx,pj.vy)||1; plot(w2c(pj.x-pj.vx/psp*cellH),w2r(pj.y-pj.vy/psp*cellH),'.',L.color); plot(w2c(pj.x),w2r(pj.y),'!','#ffffff'); }
