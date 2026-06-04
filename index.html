@@ -129,7 +129,7 @@
       <div class="ctrl"><div class="row"><span>Enemies per lane</span><b id="v-count">700</b></div><input type="range" id="count" min="100" max="3000" step="50" value="700"></div>
       <div class="frow"><span class="lbl">Enemy symbol</span><input type="text" id="enemyChar" maxlength="6" value="&" style="width:70px;text-align:center;font-size:18px"></div>
       <div class="ctrl"><div class="row"><span>Enemy speed</span><b id="v-espd">3.5</b></div><input type="range" id="espd" min="2" max="12" step="0.5" value="3.5"></div>
-      <div class="ctrl"><div class="row"><span>Enemy damage</span><b id="v-edmg">3</b></div><input type="range" id="edmg" min="1" max="30" step="1" value="3"></div>
+      <div class="ctrl"><div class="row"><span>Enemy damage</span><b id="v-edmg">13</b></div><input type="range" id="edmg" min="1" max="30" step="1" value="13"></div>
       <div class="ctrl"><div class="row"><span>Boss HP</span><b id="v-boss">8500</b></div><input type="range" id="boss" min="0" max="30000" step="500" value="8500"></div>
       <div class="ctrl"><div class="row"><span>Max on screen</span><b id="v-cap">90</b></div><input type="range" id="cap" min="20" max="220" step="10" value="90"></div>
       <div class="ctrl"><div class="row"><span>Poop damage</span><b id="v-poopDmg">55</b></div><input type="range" id="poopDmg" min="0" max="200" step="5" value="55"></div>
@@ -180,7 +180,7 @@
 
   var cfg={ A:{name:'GASBAG',color:'#5fc23f',ability:'FART',hp:7600,char:0,params:{}},
             B:{name:'RIBBIT',color:'#46e2a0',ability:'FROG TONGUE',hp:7600,char:1,params:{}},
-            count:700, espd:3.5, edmg:9, bossHp:8500, cap:30, enemyChar:'&', bossIdx:0, poopGap:24, poopDmg:55, sound:true, pick:true, autorec:true };
+            count:700, espd:3.5, edmg:13, bossHp:8500, cap:30, enemyChar:'&', bossIdx:0, poopGap:24, poopDmg:55, sound:true, pick:true, autorec:true };
   var lanes=[], running=false, finished=false, winnerSide=null, t0=0, elapsed=0, raf=null, countdown=0;
   var ko=null, KO_DUR=1.6, SFX={};
   var callouts=[], koMile=0, lastLead=null;
