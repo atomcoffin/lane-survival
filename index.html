@@ -355,18 +355,9 @@
     var eye=(Math.floor(ph*2)%2)?'O':'@'; if(Math.floor(ph*1.1)%6===0) eye='-';
     var mf=['WWWWW','MWMWM','/\\/\\/','vvvvv']; var mouth=mf[Math.floor(ph*3)%4];
     return [ "   _____   ", "  /     \\  ", " | "+eye+"   "+eye+" | ", " |   ^   | ", " | "+mouth+" | ", "  \\_____/  ", "  vvvvvvv  " ]; }
+  // Only BEAR for now \u2014 new bosses with unique attack styles are being reworked.
   var BOSSES=[
-    {name:'BEAR', kind:'bear', color:'#c8895a', art:[" (o)   (o)", " /~~~~~~~\\", "( o     o )", "(    ^    )", " \\  \\_/  /", "  \\_____/"], artStand:["\\(o) (o)/", "( >   < )", "(  /^\\  )", "( |WWW| )", " \\_____/", "/|     |\\"]},
-    {name:'SKULL', anim:true},
-    {name:'DEMON', art:[" \\_     _/ ","   \\   /   ","  (O) (O)  ","     <     ","  \\vvvvv/  ","   \\___/   ","    \\_/    "]},
-    {name:'ROBOT', art:["  _______  "," |  ___  | "," | |O|O| | "," | |___| | "," |  ===  | "," |_____| | ","  |_| |_|  "]},
-    {name:'CYCLOPS', art:["   _____   ","  /     \\  "," |   _   | "," |  (O)  | "," |   v   | ","  \\_____/  ","   vvvvv   "]},
-    {name:'GHOST', art:["   ___    ","  /   \\   "," | O O | "," |  ^  | "," | \\_/ | ","  \\   /  ","  ~ ~ ~  "]},
-    {name:'WORM', art:["   ___    ","  /o o\\   "," ( --- )  ","  \\___/   ","  /MMM\\   "," |MMMMM|  ","  \\___/   "]},
-    {name:'\ud83d\udc79 OGRE', emoji:'\ud83d\udc79'},
-    {name:'\ud83d\udc7e INVADER', emoji:'\ud83d\udc7e'},
-    {name:'\ud83e\udd21 CLOWN', emoji:'\ud83e\udd21'},
-    {name:'\ud83d\udca9 POOPLORD', emoji:'\ud83d\udca9'}
+    {name:'BEAR', kind:'bear', color:'#c8895a', art:[" (o)   (o)", " /~~~~~~~\\", "( o     o )", "(    ^    )", " \\  \\_/  /", "  \\_____/"], artStand:["\\(o) (o)/", "( >   < )", "(  /^\\  )", "( |WWW| )", " \\_____/", "/|     |\\"]}
   ];
   function makeHumanoid(){ var arms=[pick(H_ARM),pick(H_ARM)], legs=[pick(H_LEG),pick(H_LEG)];
     if(legs[1]===legs[0]) legs[1]=' | | ';
@@ -727,11 +718,13 @@
     ctx.font='700 26px "Inter",system-ui,sans-serif'; ctx.fillStyle='#fff'; ctx.lineWidth=5; ctx.strokeStyle='rgba(0,0,0,0.55)';
     var st=L.kills+' KILLS'; ctx.strokeText(st,cx,253); ctx.fillText(st,cx,253); }
   function bottomStats(L){ var cx=L.cx; ctx.textAlign='center'; ctx.textBaseline='middle';
-    // HP lives in the top safe band (was at the bottom edge, behind TikTok's caption/nav)
+    // HP bar + ult name sit at the bottom, just below the hero sprite
     var segs=14, fr=Math.max(0,L.hp)/L.maxhp, fl=Math.round(fr*segs), bar='';
     for(var s=0;s<segs;s++) bar+=(s<fl?'#':'-');
-    ctx.font='600 26px "JetBrains Mono",monospace'; ctx.lineWidth=6; ctx.strokeStyle='rgba(0,0,0,0.55)'; ctx.fillStyle=L.color;
-    ctx.strokeText(bar,cx,292); ctx.fillText(bar,cx,292); }
+    ctx.font='600 28px "JetBrains Mono",monospace'; ctx.lineWidth=6; ctx.strokeStyle='rgba(0,0,0,0.55)'; ctx.fillStyle=L.color;
+    ctx.strokeText(bar,cx,L.hy+88); ctx.fillText(bar,cx,L.hy+88);
+    ctx.font='700 24px "Inter",system-ui,sans-serif'; ctx.lineWidth=4; ctx.fillStyle=(L.ulted?'#ffd60a':'rgba(255,255,255,0.6)');
+    ctx.strokeText(L.ultName,cx,L.hy+122); ctx.fillText(L.ultName,cx,L.hy+122); }
   function drawField(){
     ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
     ctx.fillStyle='rgba(255,255,255,0.015)'; ctx.fillRect(0,0,W/2,H);
@@ -1015,14 +1008,15 @@
     for(var li=0;li<lanes.length;li++){ var L=lanes[li], cx=L.cx, col=L.dead?'#6a6f78':L.color;
       gtext(cx,205,L.name,col,1.5);
       gtext(cx,253,String(L.kills)+' KILLS','#ffd60a',1.2);
+      // HP bar + ult name sit at the bottom, just below the hero sprite
       var segs=14, fr=Math.max(0,L.hp)/L.maxhp, fl=Math.round(fr*segs), bar='';
       for(var s=0;s<segs;s++) bar+=(s<fl?'\u2588':'\u2591');
-      gtext(cx, 292, bar, col, 0.85);
+      gtext(cx, L.hy+88, bar, col, 0.9);
+      gtext(cx, L.hy+122, L.ultName, (L.ulted?'#ffd60a':'rgba(159,230,160,0.55)'), 0.72);
     }
     for(var ul=0;ul<lanes.length;ul++){ var Lu=lanes[ul];
       if(Lu.ultFlash>0){ ctx.save(); ctx.globalAlpha=Lu.ultFlash*0.34; ctx.fillStyle=Lu.color; ctx.fillRect(Lu.x0,0,Lu.w,H); ctx.restore(); }
-      if(Lu.ultBannerT>0){ gtext(Lu.cx, H*0.40, 'ULTIMATE', Lu.color, 0.95); gtext(Lu.cx, H*0.45, Lu.ultName, '#ffffff', 1.5); }
-      else if(Lu.ulted && !finished){ gtext(Lu.cx, 270, '* '+Lu.ultName, '#ffd60a', 0.6); } }
+      if(Lu.ultBannerT>0){ gtext(Lu.cx, H*0.40, 'ULTIMATE', Lu.color, 0.95); gtext(Lu.cx, H*0.45, Lu.ultName, '#ffffff', 1.5); } }
     if(callouts.length && countdown<=0){ var co=callouts[callouts.length-1]; ctx.save(); ctx.globalAlpha=Math.max(0,Math.min(1,co.life*1.5)); bigText(W/2,H*0.30,co.txt,co.color,1); ctx.restore(); }
     if(phase==='alert'){ var on=Math.floor(elapsed*6)%2===0;
       ctx.fillStyle='rgba(255,60,50,'+(on?0.16:0.06)+')'; ctx.fillRect(0,0,W,H);
