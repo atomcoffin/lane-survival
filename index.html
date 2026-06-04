@@ -154,6 +154,21 @@
     <div class="note">Audio is mixed into the recording, so exported clips have sound. Export is .webm (all platforms accept it; convert in CapCut for .mp4). If the in-frame download is blocked, open this file in its own tab. Set Boss HP to 0 to skip the boss. Tune so fights run just past 60s and the winner genuinely swings between runs.</div>
   </div>
 
+<!-- Editable character overrides — names & dialogue. Edit any file in characters/ and refresh.
+     Each file registers into window.LS_CHARACTERS; missing/broken files just fall back to built-in defaults. -->
+<script src="characters/gasbag.js"></script>
+<script src="characters/ribbit.js"></script>
+<script src="characters/void.js"></script>
+<script src="characters/buzzsaw.js"></script>
+<script src="characters/deadeye.js"></script>
+<script src="characters/kaboom.js"></script>
+<script src="characters/spray.js"></script>
+<script src="characters/ratatat.js"></script>
+<script src="characters/bones.js"></script>
+<script src="characters/pucker.js"></script>
+<script src="characters/lazer.js"></script>
+<script src="characters/smacko.js"></script>
+
 <script>
 (function(){
   "use strict";
@@ -385,7 +400,20 @@
     "LAZER":{w:6,idle:[" .--. ", "(-oo-)", " |  | ", " d  b "],act:[" .--. ", "(@oo@)", " |  | ", " d  b "]},
     "SMACKO":{w:6,idle:["(o.o) ", " /||\\ ", " |  | ", " J  L "],act:["(O.O) ", " \\||/ ", " |  | ", " J  L "]}
   };
-  for(var _ci=0;_ci<CHARACTERS.length;_ci++){ CHARACTERS[_ci].art=SPRITES[CHARACTERS[_ci].name]||null; }
+  // Each character keeps a stable `key` (its original id) used to look up sprite art, ult
+  // banner, and default dialogue — so the editable display `name` can be changed freely.
+  for(var _ci=0;_ci<CHARACTERS.length;_ci++){ var _C=CHARACTERS[_ci];
+    _C.key=_C.name; _C.art=SPRITES[_C.key]||null;
+    var _dq=QUIPS[_C.key]||{idle:[],hurt:[],ult:[]}; _C.quips={idle:_dq.idle||[],hurt:_dq.hurt||[],ult:_dq.ult||[]}; }
+  // Apply external overrides from characters/*.js (window.LS_CHARACTERS), if those files loaded.
+  // Each entry is keyed by the character's id and may set a new display name and/or dialogue lists.
+  (function(){ var OV=(typeof window!=='undefined'&&window.LS_CHARACTERS)||null; if(!OV)return;
+    for(var i=0;i<CHARACTERS.length;i++){ var C=CHARACTERS[i], o=OV[C.key]; if(!o)continue;
+      if(o.name) C.name=String(o.name);
+      if(o.color) C.color=String(o.color);
+      if(o.idle&&o.idle.length) C.quips.idle=o.idle;
+      if(o.hurt&&o.hurt.length) C.quips.hurt=o.hurt;
+      if(o.ult&&o.ult.length)  C.quips.ult=o.ult; } })();
   var CAVE={w:27,rows:["         _________         ", "      _-'         '-_      ", "    _/               \\_    ", "   /                   \\   ", "  /                     \\  ", " Y|                     |Y ", "v*o.                   .o*v"]};
   var BENEMY={bear:'\ud83d\udc3b'};
   var BELITE={bear:'\ud83d\udc17'};  /* elite grunt emoji per boss kind (\ud83d\udc17); falls back to \ud83d\udc79 */
@@ -402,9 +430,9 @@
       hp:conf.hp,maxhp:conf.hp,kills:0,dmg:0,spawned:0,toSpawn:cfg.count,waveT:0.5,
       enemies:[],skeletons:[],fx:[],projectiles:[],pucks:[],mist:[],mistCd:0,orbAng:0,beamAng:-Math.PI/2,cd:0,nukeFlash:0,nukeR:200,tracer:null,
       wave:-1, fartGap:0, actPulse:0, hole:null, hand:null, hand2:null, cd2:null, pads:[], chainPts:null, chainLife:0,
-      flooded:false, hurtT:0, say:null, sayCd:2.5+Math.random()*3.5, charName:(conf.char!=null&&CHARACTERS[conf.char]?CHARACTERS[conf.char].name:null), fig:(conf.char!=null&&CHARACTERS[conf.char]?CHARACTERS[conf.char].fig:makeHumanoid()), figArt:(conf.char!=null&&CHARACTERS[conf.char]&&CHARACTERS[conf.char].art?CHARACTERS[conf.char].art:null), blinkSeed:Math.random()*6.28,
+      flooded:false, hurtT:0, say:null, sayCd:2.5+Math.random()*3.5, quips:(conf.char!=null&&CHARACTERS[conf.char]?CHARACTERS[conf.char].quips:null), fig:(conf.char!=null&&CHARACTERS[conf.char]?CHARACTERS[conf.char].fig:makeHumanoid()), figArt:(conf.char!=null&&CHARACTERS[conf.char]&&CHARACTERS[conf.char].art?CHARACTERS[conf.char].art:null), blinkSeed:Math.random()*6.28,
       boss:null, bossDead:false, dead:false, cleared:false,
-      ultReady:true, ulted:false, ultT:0, ultFlash:0, ultBannerT:0, ultName:(conf.char!=null&&CHARACTERS[conf.char]?ULTS[CHARACTERS[conf.char].name]:'OVERDRIVE')}; }
+      ultReady:true, ulted:false, ultT:0, ultFlash:0, ultBannerT:0, ultName:(conf.char!=null&&CHARACTERS[conf.char]?ULTS[CHARACTERS[conf.char].key]:'OVERDRIVE')}; }
   function reset(){ cancelAnimationFrame(raf); running=false; finished=false; winnerSide=null; elapsed=0; countdown=0; phase='survive'; alertT=0; callouts=[]; koMile=0; lastLead=null; ko=null;
     if(rec.state==='recording'){try{rec.stop();}catch(e){}}
     lanes=[makeLane('A',cfg.A,0),makeLane('B',cfg.B,W/2)]; lanes[0].boss=mkBoss(lanes[0]); lanes[1].boss=mkBoss(lanes[1]); draw(); setStatus(''); }
@@ -592,7 +620,7 @@
   function laneClear(L){ return L.spawned>=L.toSpawn && L.enemies.length===0; }
   function mkBoss(L){ var BD=BOSSES[cfg.bossIdx]||BOSSES[0]; return {x:L.cx,y:FIELD_TOP+185,r:48,ph:0,flash:0,kind:BD.kind||null,roar:0,atkCd:Math.round(BEAR_GAP*0.6),invuln:true}; }
   function popCallout(txt,color){ callouts.push({txt:txt,color:color||'#ffd60a',life:1.5}); if(callouts.length>3)callouts.shift(); }
-  function popSay(L,kind,life){ if(!L.charName)return; var pack=QUIPS[L.charName]; if(!pack)return; var list=pack[kind]||pack.idle; if(!list||!list.length)return;
+  function popSay(L,kind,life){ var pack=L.quips; if(!pack)return; var list=pack[kind]||pack.idle; if(!list||!list.length)return;
     var idx=Math.floor((elapsed*7.13+L.cx*0.013+L.kills)% list.length); if(idx<0)idx+=list.length;
     L.say={txt:list[idx], col:(kind==='hurt'?'#ff5b4a':(kind==='ult'?'#ffd60a':L.color)), life:life||1.6, kind:kind}; }
   function beginKO(loser,winner){ if(ko)return; ko={loser:loser,winner:winner,t:KO_DUR}; var Ll=loser==='A'?lanes[0]:lanes[1]; for(var k=0;k<20;k++){ var a=k/20*6.283; addFx(Ll, Ll.cx+Math.cos(a)*42, Ll.hy+Math.sin(a)*42, (k&1?'*':'x'), '#ff3b30'); } sKO(); }
