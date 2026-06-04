@@ -549,7 +549,7 @@
       en.x+=ux*sp2-uy*sway; en.y+=uy*sp2+ux*sway;
       for(var sj2=0;sj2<L.enemies.length;sj2++){ if(sj2===i)continue; var o2=L.enemies[sj2]; var ox2=en.x-o2.x,oy2=en.y-o2.y,od2=ox2*ox2+oy2*oy2,mn=en.r+o2.r; if(od2>0.01&&od2<mn*mn){ var od=Math.sqrt(od2),pf=(mn-od)/od*0.5; en.x+=ox2*pf; en.y+=oy2*pf; } }
       if(en.x<L.x0+16)en.x=L.x0+16; if(en.x>L.x0+L.w-16)en.x=L.x0+L.w-16; if(en.y<FIELD_TOP+40)en.y=FIELD_TOP+40;
-      var blk=false,sks=L.skeletons; if(sks.length){ for(var sj=0;sj<sks.length;sj++){ var sk=sks[sj],bdx=sk.x-en.x,bdy=sk.y-en.y; if(bdx*bdx+bdy*bdy<400){ addFx(L,en.x,en.y,'x','#ff9a6b'); var nx2=en.x,ny2=en.y; L.enemies.splice(i,1); L.kills++; L.dmg++; sTick(); sk.hp--; if(sk.hp<=0)sks.splice(sj,1); blk=true; if(L.ulted&&L.ability==='SKELETON'&&Math.random()<0.25) raiseSkeleton(L,nx2,ny2); break; } } }
+      var blk=false,sks=L.skeletons; if(sks.length){ for(var sj=0;sj<sks.length;sj++){ var sk=sks[sj],bdx=sk.x-en.x,bdy=sk.y-en.y; if(bdx*bdx+bdy*bdy<400){ addFx(L,en.x,en.y,'x','#ff9a6b'); var nx2=en.x,ny2=en.y; L.enemies.splice(i,1); L.kills++; L.dmg++; sTick(); sk.hp--; if(sk.hp<=0)sks.splice(sj,1); blk=true; if(L.ulted&&L.ability==='SKELETON'&&Math.random()<0.12) raiseSkeleton(L,nx2,ny2); break; } } }
       if(blk) continue;
       if(dist<L.r+en.r){ L.enemies.splice(i,1); L.hp-=(en.poop?cfg.poopDmg:(en.cub?cfg.edmg*5:(en.elite?cfg.edmg*4:cfg.edmg)))*(L.ulted?0.5:1); sThud();
         L.hurtT=11; for(var hk=0;hk<5;hk++){ var ha=hk/5*6.283; addFx(L, L.cx+Math.cos(ha)*L.r*0.7, L.hy+Math.sin(ha)*L.r*0.7, (hk&1?'!':'x'), '#ff5b4a'); }
