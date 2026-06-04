@@ -455,10 +455,26 @@
   function reset(){ cancelAnimationFrame(raf); running=false; finished=false; winnerSide=null; elapsed=0; countdown=0; phase='survive'; alertT=0; callouts=[]; koMile=0; lastLead=null; ko=null;
     if(rec.state==='recording'){try{rec.stop();}catch(e){}}
     lanes=[makeLane('A',cfg.A,0),makeLane('B',cfg.B,W/2)]; lanes[0].boss=mkBoss(lanes[0]); lanes[1].boss=mkBoss(lanes[1]); draw(); setStatus(''); }
+  // enemy archetypes — distinct movement/size so the horde doesn't all play the same.
+  // wt=spawn weight, sm=speed mult, sw=sway amount, sf=sway freq, sz=emoji size, r=hit radius, hp=base hp,
+  // dash=charges in bursts, emo=override emoji (else the boss-themed grunt emoji).
+  var ETYPES=[
+    {t:'walk',   wt:48, sm:0.92, sw:0.30, sf:1.8, sz:1.55, r:22, hp:2},
+    {t:'weave',  wt:20, sm:0.86, sw:1.30, sf:3.4, sz:1.45, r:21, hp:2, emo:'👻'},  /* 👻 ghostly weaver */
+    {t:'charge', wt:16, sm:0.80, sw:0.18, sf:1.4, sz:1.75, r:26, hp:3, dash:1},
+    {t:'swarm',  wt:16, sm:1.32, sw:0.60, sf:2.8, sz:1.05, r:15, hp:1, emo:'🐛'}   /* 🐛 fast fragile swarmling */
+  ];
+  function pickEType(){ var r=Math.random()*100, a=0; for(var i=0;i<ETYPES.length;i++){ a+=ETYPES[i].wt; if(r<a)return ETYPES[i]; } return ETYPES[0]; }
   function spawnEnemy(L){ var elite=(L.spawned%14===13);
-    var ghp=(elite?12:2)+Math.floor(Math.max(0,elapsed-50)/(elite?4:8));
-    L.enemies.push({x:L.cx+(Math.random()-0.5)*L.w*0.5, y:FIELD_TOP+145+Math.random()*30, r:elite?30:22, hp:ghp, elite:elite, flash:0,
-      sm:(elite?0.6:0.9)+Math.random()*0.2, sw:0.25+Math.random()*0.45, sf:1.5+Math.random()*2, ph:Math.random()*6.28}); L.spawned++; }
+    if(elite){ var ghp=12+Math.floor(Math.max(0,elapsed-50)/4);
+      L.enemies.push({x:L.cx+(Math.random()-0.5)*L.w*0.5, y:FIELD_TOP+145+Math.random()*30, r:30, hp:ghp, elite:true, etype:'brute', sz:1.95, flash:0,
+        sm:0.6+Math.random()*0.15, sw:0.25+Math.random()*0.3, sf:1.5+Math.random()*1.5, ph:Math.random()*6.28}); }
+    else { var E=pickEType(), ghp2=E.hp+Math.floor(Math.max(0,elapsed-50)/8);
+      var en={x:L.cx+(Math.random()-0.5)*L.w*0.5, y:FIELD_TOP+145+Math.random()*30, r:E.r, hp:ghp2, elite:false, etype:E.t, sz:E.sz, emo:E.emo||null, flash:0,
+        sm:E.sm+Math.random()*0.12, sw:E.sw*(0.8+Math.random()*0.4), sf:E.sf+Math.random()*1.0, ph:Math.random()*6.28};
+      if(E.dash){ en.dash=1; en.dashCd=40+Math.floor(Math.random()*40); en.dashT=0; }
+      L.enemies.push(en); }
+    L.spawned++; }
   function addFx(L,x,y,ch,col){ if(L.fx.length>140)L.fx.shift(); L.fx.push({x:x,y:y,life:7,ch:ch,col:col}); }
   function slamHand(L,P){ var e=L.enemies, pw=P.palmW, ph=pw*0.62, hx=L.cx, hy2=(FIELD_TOP+L.hy)/2, i;
     if(e.length){ var bi=-1,bd=1e9; for(i=0;i<e.length;i++){ var dxn=e[i].x-L.cx,dyn=e[i].y-L.hy,dn=dxn*dxn+dyn*dyn; if(dn<bd){bd=dn;bi=i;} } hx=e[bi].x; hy2=e[bi].y; }
@@ -650,7 +666,9 @@
     if(L.flooded) spd*=0.8;  // AMPLIFY: ambient wade-through-water slow (surge waves add the rest)
     for(var i=L.enemies.length-1;i>=0;i--){ var en=L.enemies[i]; if(en.flash>0)en.flash--;
       if(en.wet&&en.wet<1) en.wet=Math.min(1,en.wet+0.006);  // chill from surge waves recovers over time
-      var dx=L.cx-en.x,dy=L.hy-en.y,dist=Math.hypot(dx,dy)||1,ux=dx/dist,uy=dy/dist,sp2=spd*(en.sm||1)*(en.wet||1),sway=Math.sin(elapsed*(en.sf||2)+(en.ph||0))*(en.sw||0.4);
+      var dx=L.cx-en.x,dy=L.hy-en.y,dist=Math.hypot(dx,dy)||1,ux=dx/dist,uy=dy/dist,sp2=spd*(en.sm||1)*(en.wet||1);
+      if(en.dash){ if(en.dashT>0){ en.dashT--; sp2*=2.5; } else { en.dashCd--; if(en.dashCd<=0){ en.dashT=16; en.dashCd=70+Math.floor(Math.random()*40); addFx(L,en.x,en.y,'>','#ffd60a'); } } }
+      var sway=Math.sin(elapsed*(en.sf||2)+(en.ph||0))*(en.sw||0.4);
       en.x+=ux*sp2-uy*sway; en.y+=uy*sp2+ux*sway;
       for(var sj2=0;sj2<L.enemies.length;sj2++){ if(sj2===i)continue; var o2=L.enemies[sj2]; var ox2=en.x-o2.x,oy2=en.y-o2.y,od2=ox2*ox2+oy2*oy2,mn=en.r+o2.r; if(od2>0.01&&od2<mn*mn){ var od=Math.sqrt(od2),pf=(mn-od)/od*0.5; en.x+=ox2*pf; en.y+=oy2*pf; } }
       if(en.x<L.x0+16)en.x=L.x0+16; if(en.x>L.x0+L.w-16)en.x=L.x0+L.w-16; if(en.y<FIELD_TOP+40)en.y=FIELD_TOP+40;
@@ -900,9 +918,9 @@
       var ech=cfg.enemyChar||'&'; var bk0=(BOSSES[cfg.bossIdx]||{}).kind; if(bk0&&BENEMY[bk0]&&(cfg.enemyChar==='&'||!cfg.enemyChar)) ech=BENEMY[bk0];
       var eech=(bk0&&BELITE[bk0])?BELITE[bk0]:'\ud83d\udc79';
       for(i=0;i<e.length;i++){ var en=e[i];
-        var gch=en.poop?'\ud83d\udca9':(en.cub?'\ud83d\udc3b':(en.elite?eech:ech));
+        var gch=en.poop?'\ud83d\udca9':(en.cub?'\ud83d\udc3b':(en.elite?eech:(en.emo||ech)));
         var ge=gch.length>1||gch.codePointAt(0)>0x2100;
-        if(ge){ var esz=Math.ceil(cellH*(en.cub?2.0:(en.poop?1.35:(en.elite?1.95:1.55)))); ctx.font='700 '+esz+'px "JetBrains Mono",sans-serif'; ctx.fillStyle='#ffffff'; ctx.fillText(gch, en.x, en.y); }
+        if(ge){ var esz=Math.ceil(cellH*(en.cub?2.0:(en.poop?1.35:(en.sz||1.55)))); ctx.font='700 '+esz+'px "JetBrains Mono",sans-serif'; ctx.fillStyle='#ffffff'; ctx.fillText(gch, en.x, en.y); }
         else { ctx.font='700 '+Math.ceil(cellH*1.3)+'px "JetBrains Mono",monospace'; ctx.fillStyle=en.flash>0?'#ffffff':(en.elite?'#ffd60a':'#ff6b5e'); ctx.fillText(gch, en.x, en.y); } }
       ctx.font='700 '+Math.ceil(cellH*0.95)+'px "JetBrains Mono",monospace';
       for(var ksr=0;ksr<L.skeletons.length;ksr++){ var skk=L.skeletons[ksr],skc=w2c(skk.x),skr=w2r(skk.y); plot(skc,skr,'A','#ece8d6'); plot(skc,skr-1,'o','#ece8d6'); }
