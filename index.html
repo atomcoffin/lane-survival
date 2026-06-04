@@ -215,6 +215,7 @@
             B:{name:'LICKY RICKY',color:'#46e2a0',ability:'FROG TONGUE',hp:7600,char:1,params:{}},
             count:700, espd:3.5, edmg:13, bossHp:8500, cap:30, enemyChar:'&', bossIdx:0, poopGap:24, poopDmg:55, sound:true, pick:true, autorec:true };
   var lanes=[], running=false, finished=false, winnerSide=null, t0=0, elapsed=0, raf=null, countdown=0;
+  var introT=0, shakeT=0, shakeMag=0, slamA=false, slamB=false;  // intro card + impact shake
   var ko=null, KO_DUR=1.6, SFX={};
   var callouts=[], koMile=0, lastLead=null;
   var FIXED=1000/60, acc=0, lastFrame=0;
@@ -399,7 +400,9 @@
   };
   var ULT_THRESH=0.10;
   var BEAR_GAP=270, ROAR_DUR=72, SURV_CAP=160, HOOK_DUR=2.6;  // cold-open hook overlay duration (s)
-  var SLAM_DUR=0.5;  // name slam-in animation duration (s); lane B is staggered slightly after A
+  var SLAM_DUR=0.5;     // name slam-in animation duration (s); lane B is staggered slightly after A
+  var INTRO_DUR=1.6;    // "WHO CAN LAST?" intro card duration (s) before the battle cold-opens
+  var SLAM_LAND=0.34;   // point within a name's slam where it "lands" (triggers the impact shake)
   var GRUDGE_GAP=220, THROW_DUR=20, GRUDGE_DOT=12, GRUDGE_DOT_SECS=7;  // VHS tape: dmg/sec for 7s
   var SPRITES={
     "GASBAG":{w:6,idle:["(o..O)", "(_vv_)", "/|  |\\", " J  L "],act:["(>..<)", "(OvvO)", "\\|  |/", "~J  L~"]},
@@ -756,19 +759,16 @@
 
   /* ============ RENDER ============ */
   function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
-  // name slam-in: at match start each lane's name punches in big and drops to size with a little
-  // overshoot (lane B staggered after A). mode 'pre' = not on yet, 'slam' = animating, 'done' = settled.
-  function nameSlam(li){ var st=elapsed-li*0.12;
-    if(!running||finished||st>=SLAM_DUR) return {mode:'done'};
+  // name slam-in: a lane's name punches in big at time t and drops to size with a little overshoot
+  // (lane B staggered after A). Pure function of (laneIndex, time). 'pre'=not yet, 'slam'=animating, 'done'=settled.
+  function nameSlam(li,t){ var st=t-li*0.14;
     if(st<0) return {mode:'pre'};
+    if(st>=SLAM_DUR) return {mode:'done'};
     var p=st/SLAM_DUR, ease=1-Math.pow(1-p,3);
-    return {mode:'slam', mult:Math.max(0.25, 2.6+(1-2.6)*ease + Math.sin(p*6.283)*Math.max(0,1-p)*0.14), dy:-58*(1-ease), alpha:Math.min(1,p*10), white:p<0.14}; }
+    return {mode:'slam', mult:Math.max(0.25, 2.8+(1-2.8)*ease + Math.sin(p*6.283)*Math.max(0,1-p)*0.14), dy:-60*(1-ease), alpha:Math.min(1,p*10), white:p<0.16}; }
   function header(L){ var cx=L.cx; ctx.textAlign='center'; ctx.textBaseline='middle';
-    var sm=nameSlam(L.side==='A'?0:1);
-    if(sm.mode!=='pre'){ ctx.save(); var nsz=Math.round(48*(sm.mode==='slam'?sm.mult:1)), ny=205+(sm.mode==='slam'?sm.dy:0);
-      if(sm.mode==='slam')ctx.globalAlpha=sm.alpha;
-      ctx.font='800 '+nsz+'px "Inter",system-ui,sans-serif'; ctx.lineWidth=9; ctx.strokeStyle='#000'; ctx.fillStyle=(sm.white?'#ffffff':L.color);
-      ctx.strokeText(L.name,cx,ny); ctx.fillText(L.name,cx,ny); ctx.restore(); }
+    ctx.font='800 48px "Inter",system-ui,sans-serif'; ctx.lineWidth=9; ctx.strokeStyle='#000'; ctx.fillStyle=L.color;
+    ctx.strokeText(L.name,cx,205); ctx.fillText(L.name,cx,205);
     ctx.font='700 26px "Inter",system-ui,sans-serif'; ctx.fillStyle='#fff'; ctx.lineWidth=5; ctx.strokeStyle='rgba(0,0,0,0.55)';
     var st=L.kills+' KILLS'; ctx.strokeText(st,cx,253); ctx.fillText(st,cx,253); }
   function bottomStats(L){ var cx=L.cx; ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -856,6 +856,15 @@
     if(phase==='alert'){ var aon=Math.floor(elapsed*6)%2===0; ctx.fillStyle='rgba(255,60,50,'+(aon?0.16:0.06)+')'; ctx.fillRect(0,0,W,H);
       if(aon){ ctx.font='800 90px "Inter",system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=14; ctx.strokeStyle='#000'; ctx.fillStyle='#ff5b4a';
         ctx.strokeText('!! BOSS ALERT !!',W/2,H*0.46); ctx.fillText('!! BOSS ALERT !!',W/2,H*0.46); } }
+    if(phase==='intro'){ var iie=INTRO_DUR-introT, ifo=Math.max(0,Math.min(1,introT/0.35)); ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.globalAlpha=0.66*ifo; ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H); ctx.globalAlpha=ifo;
+      ctx.font='800 84px "Inter",system-ui,sans-serif'; ctx.lineWidth=14; ctx.strokeStyle='#000'; ctx.fillStyle='#fff';
+      ctx.strokeText('WHO CAN LAST?',W/2,H*0.29); ctx.fillText('WHO CAN LAST?',W/2,H*0.29);
+      for(var iil=0;iil<lanes.length;iil++){ var Lii=lanes[iil], ism=nameSlam(iil,iie); if(ism.mode==='pre')continue;
+        var insz=Math.round(74*((ism.mode==='slam')?ism.mult:1)), iny=H*0.44+((ism.mode==='slam')?ism.dy:0); ctx.globalAlpha=ifo*((ism.mode==='slam')?ism.alpha:1);
+        ctx.font='800 '+insz+'px "Inter",system-ui,sans-serif'; ctx.lineWidth=12; ctx.strokeStyle='#000'; ctx.fillStyle=(ism.white?'#fff':Lii.color);
+        ctx.strokeText(Lii.name,Lii.cx,iny); ctx.fillText(Lii.name,Lii.cx,iny); }
+      ctx.globalAlpha=ifo; ctx.font='800 48px "Inter",system-ui,sans-serif'; ctx.fillStyle='#46e2a0'; ctx.strokeText('VS',W/2,H*0.44); ctx.fillText('VS',W/2,H*0.44); ctx.restore(); }
     if(running && cfg.pick && !finished && elapsed<HOOK_DUR){ var hk2=Math.max(0,Math.min(1,(HOOK_DUR-elapsed)/0.6)), pul2=0.55+0.45*Math.sin(elapsed*9);
       ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.globalAlpha=hk2*0.5; ctx.fillStyle='#000'; ctx.fillRect(0,H*0.31,W,H*0.17);
       ctx.globalAlpha=hk2; ctx.font='800 92px "Inter",system-ui,sans-serif'; ctx.lineWidth=14; ctx.strokeStyle='#000'; ctx.fillStyle='#fff';
@@ -1068,9 +1077,7 @@
     gtext(W/2, 205, 'VS', '#46e2a0', 1.2);
     gtext(W/2, 292, elapsed.toFixed(1)+'s', 'rgba(159,230,160,0.5)', 0.7);
     for(var li=0;li<lanes.length;li++){ var L=lanes[li], cx=L.cx, col=L.dead?'#6a6f78':L.color;
-      var nsm=nameSlam(li);
-      if(nsm.mode==='slam'){ ctx.save(); ctx.globalAlpha=nsm.alpha; gtext(cx,205+nsm.dy,L.name,(nsm.white?'#ffffff':col),1.5*nsm.mult); ctx.restore(); }
-      else if(nsm.mode==='done') gtext(cx,205,L.name,col,1.5);
+      gtext(cx,205,L.name,col,1.5);
       gtext(cx,253,String(L.kills)+' KILLS','#ffd60a',1.2);
       // HP bar + ult name sit at the bottom, just below the hero sprite
       var segs=14, fr=Math.max(0,L.hp)/L.maxhp, fl=Math.round(fr*segs), bar='';
@@ -1085,6 +1092,14 @@
     if(phase==='alert'){ var on=Math.floor(elapsed*6)%2===0;
       ctx.fillStyle='rgba(255,60,50,'+(on?0.16:0.06)+')'; ctx.fillRect(0,0,W,H);
       if(on){ bigText(W/2,H*0.40,'BOSS','#ff5b4a',2); bigText(W/2,H*0.54,'ALERT','#ff5b4a',2); } }
+    // INTRO CARD: "WHO CAN LAST?" with the matchup names slamming in, before the battle starts
+    if(phase==='intro'){ var ie=INTRO_DUR-introT, fo=Math.max(0,Math.min(1,introT/0.35));
+      ctx.save(); ctx.globalAlpha=0.66*fo; ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H); ctx.globalAlpha=fo;
+      gtext(W/2,H*0.29,'WHO CAN LAST?','#ffffff',2.1);
+      for(var il=0;il<lanes.length;il++){ var Li=lanes[il], sm=nameSlam(il,ie); if(sm.mode==='pre')continue;
+        var msc=(sm.mode==='slam')?sm.mult:1, mdy=(sm.mode==='slam')?sm.dy:0; ctx.globalAlpha=fo*((sm.mode==='slam')?sm.alpha:1);
+        gtext(Li.cx, H*0.44+mdy, Li.name, (sm.white?'#ffffff':Li.color), 1.7*msc); }
+      ctx.globalAlpha=fo; gtext(W/2,H*0.44,'VS','#46e2a0',1.4); ctx.restore(); }
     // COLD-OPEN HOOK: prompt rides over the live battle for the first couple seconds, then fades out
     if(running && cfg.pick && !finished && elapsed<HOOK_DUR){ var hk=Math.max(0,Math.min(1,(HOOK_DUR-elapsed)/0.6)), pul=0.55+0.45*Math.sin(elapsed*9);
       ctx.save(); ctx.globalAlpha=hk*0.5; ctx.fillStyle='#000'; ctx.fillRect(0,H*0.31,W,H*0.17); ctx.restore();
@@ -1102,14 +1117,18 @@
     ctx.fillStyle='rgba(8,10,12,0.88)'; rr(bx-bw/2,by-bh/2,bw,bh,12); ctx.fill(); ctx.lineWidth=3; ctx.strokeStyle=s.col||L.color; ctx.stroke();
     ctx.beginPath(); ctx.moveTo(L.cx-9,by+bh/2-2); ctx.lineTo(L.cx,by+bh/2+14); ctx.lineTo(L.cx+9,by+bh/2-2); ctx.closePath(); ctx.fillStyle='rgba(8,10,12,0.88)'; ctx.fill();
     ctx.fillStyle=s.col||'#ffffff'; ctx.fillText(s.txt,bx,by); ctx.restore(); }
+  function shake(mag){ shakeT=9; shakeMag=mag; }
   function draw(){
+    var sx=0,sy=0; if(shakeT>0){ shakeT--; var sk=shakeMag*(shakeT/9); sx=(Math.random()-0.5)*sk; sy=(Math.random()-0.5)*sk; }
+    ctx.save(); if(sx||sy) ctx.translate(sx,sy);
     if(asciiMode){ var cols=asciiCols, cellW=W/cols, cellH=cellW/0.55, rows=Math.max(1,Math.floor(H/cellH));
       ensureGrid(cols,rows,cellW,cellH);
-      ctx.fillStyle='#070809'; ctx.fillRect(0,0,W,H); ctx.drawImage(gridBg,0,0,W,H);
+      ctx.fillStyle='#070809'; ctx.fillRect(-30,-30,W+60,H+60); ctx.drawImage(gridBg,0,0,W,H);
       asciiGrid(cols,rows,cellW,cellH);
       asciiHUD(cols,cellW,cellH);
     } else { drawField(); drawHUD(); }
     if(lanes&&lanes.length){ for(var di=0;di<lanes.length;di++) drawSay(lanes[di]); }
+    ctx.restore();
   }
 
   /* ============ RECORDING ============ */
@@ -1154,9 +1173,15 @@
   document.addEventListener('pointerdown',function(e){ var t=e.target; if(t&&(t.tagName==='BUTTON'||t.tagName==='SELECT'||t.tagName==='INPUT'||t.tagName==='LABEL')) stopAttract(); },true);
   document.getElementById('roll').onclick=function(){ stopAttract(); rollMatchup(); reset(); };
   function begin(){ stopAttract(); ensureAudio(); if(AC&&AC.state==='suspended')AC.resume(); reset(); if(cfg.autorec)startRec();
-    // COLD OPEN: jump straight into the action (no 3-2-1). The engagement prompt rides over the
-    // live battle for the first HOOK_DUR seconds, then fades — keeps the scroll-stopping first frame.
-    countdown=0; running=true; finished=false; phase='fight'; alertT=0; t0=performance.now(); acc=0; lastFrame=0; raf=requestAnimationFrame(frame);
+    // Short "WHO CAN LAST?" intro card (names slam in, with an impact shake on each landing), then the
+    // battle cold-opens — no 3-2-1 freeze, but a beat to read the matchup before the chaos.
+    countdown=0; running=false; finished=false; phase='intro'; alertT=0; introT=INTRO_DUR; slamA=false; slamB=false; var i0=performance.now();
+    (function intro(){ if(phase!=='intro') return;  // reset/attract interrupted the intro
+      introT=INTRO_DUR-(performance.now()-i0)/1000; var ie=INTRO_DUR-introT;
+      if(!slamA && ie>=SLAM_LAND){ slamA=true; shake(26); tone(96,'square',0.3,0.004,0.16,46); }
+      if(!slamB && ie>=SLAM_LAND+0.14){ slamB=true; shake(26); tone(108,'square',0.3,0.004,0.16,52); }
+      if(introT>0){ draw(); raf=requestAnimationFrame(intro); }
+      else { introT=0; running=true; phase='fight'; t0=performance.now(); acc=0; lastFrame=0; raf=requestAnimationFrame(frame); } })();
   }
   document.getElementById('start').onclick=begin;
   document.getElementById('reset').onclick=function(){stopAttract();document.getElementById('dl').style.display='none';reset();};
