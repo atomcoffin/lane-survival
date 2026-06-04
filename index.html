@@ -452,7 +452,7 @@
         var aim = tgt?Math.atan2(tgt.y-L.hy,tgt.x-L.cx):(b?Math.atan2(b.y-L.hy,b.x-L.cx):-Math.PI/2); aim+=(Math.random()-0.5)*P.spread;
         L.projectiles.push({x:L.cx,y:L.hy-L.r,vx:Math.cos(aim)*P.speed,vy:Math.sin(aim)*P.speed}); sZap('MINIGUN'); L.actPulse=4; L.cd=Math.max(1,Math.round(P.cooldown)); } }
     else if(L.ability==='PUCK'){ L.cd-=1;
-      if(L.cd<=0 && L.pucks.length<Math.round(P.count)){ var pa=Math.random()*Math.PI*2; L.pucks.push({x:L.cx,y:L.hy-L.r-34,vx:Math.cos(pa)*P.speed,vy:Math.sin(pa)*P.speed,r:P.size}); tone(260,'triangle',0.32,0.003,0.13,150); L.actPulse=10; L.cd=Math.max(20,P.cooldown/ramp); }
+      if(L.cd<=0 && L.pucks.length<Math.round(P.count)*(L.ulted?2:1)){ var pa=Math.random()*Math.PI*2; L.pucks.push({x:L.cx,y:L.hy-L.r-34,vx:Math.cos(pa)*P.speed,vy:Math.sin(pa)*P.speed,r:P.size*(L.ulted?1.6:1)}); tone(260,'triangle',0.32,0.003,0.13,150); L.actPulse=10; L.cd=Math.max(20,P.cooldown/ramp); }
       for(var pk=0;pk<L.pucks.length;pk++){ var pu=L.pucks[pk]; pu.x+=pu.vx; pu.y+=pu.vy;
         if(pu.x-pu.r<L.x0){pu.x=L.x0+pu.r;pu.vx=Math.abs(pu.vx);sTick();}
         if(pu.x+pu.r>L.x0+L.w){pu.x=L.x0+L.w-pu.r;pu.vx=-Math.abs(pu.vx);sTick();}
@@ -527,6 +527,11 @@
       for(var ui=L.enemies.length-1;ui>=0;ui--){ var ue=L.enemies[ui]; if((ue.x-L.cx)*(ue.x-L.cx)+(ue.y-L.hy)*(ue.y-L.hy) < 330*330) killAt(L,ui); }
       for(var uf=0;uf<16;uf++){ var ua=uf/16*6.283; addFx(L, L.cx+Math.cos(ua)*64, L.hy+Math.sin(ua)*64, '*', '#ffffff'); }
       sUlt();
+      // MULTIBALL: split every puck in two and supersize them
+      if(L.ability==='PUCK'){ var sp0=L.params.speed;
+        if(!L.pucks.length){ for(var ps=0;ps<2;ps++){ var sa=Math.random()*6.283; L.pucks.push({x:L.cx,y:L.hy-L.r-34,vx:Math.cos(sa)*sp0,vy:Math.sin(sa)*sp0,r:L.params.size*1.6}); } }
+        else { var clones=[]; for(var pj=0;pj<L.pucks.length;pj++){ var op=L.pucks[pj]; op.r*=1.6; var spd0=Math.hypot(op.vx,op.vy)||sp0, na=Math.atan2(op.vy,op.vx)+1.7+Math.random()*0.6; clones.push({x:op.x,y:op.y,vx:Math.cos(na)*spd0,vy:Math.sin(na)*spd0,r:op.r}); }
+          for(var cl=0;cl<clones.length;cl++) L.pucks.push(clones[cl]); } }
     }
     if(L.actPulse>0) L.actPulse--;
     if(L.ultFlash>0) L.ultFlash-=0.06;
