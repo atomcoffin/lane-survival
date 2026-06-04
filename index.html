@@ -162,19 +162,19 @@
 
 <!-- Editable character overrides — names & dialogue. Edit any file in characters/ and refresh.
      Each file registers into window.LS_CHARACTERS; missing/broken files just fall back to built-in defaults. -->
-<script src="characters/gasbag.js?v=2"></script>
-<script src="characters/ribbit.js?v=2"></script>
-<script src="characters/void.js?v=2"></script>
-<script src="characters/buzzsaw.js?v=2"></script>
-<script src="characters/deadeye.js?v=2"></script>
-<script src="characters/kaboom.js?v=2"></script>
-<script src="characters/spray.js?v=2"></script>
-<script src="characters/ratatat.js?v=2"></script>
-<script src="characters/bones.js?v=2"></script>
-<script src="characters/pucker.js?v=2"></script>
-<script src="characters/lazer.js?v=2"></script>
-<script src="characters/smacko.js?v=2"></script>
-<script src="characters/cattywumpus.js?v=2"></script>
+<script src="characters/gasbag.js?v=3"></script>
+<script src="characters/ribbit.js?v=3"></script>
+<script src="characters/void.js?v=3"></script>
+<script src="characters/buzzsaw.js?v=3"></script>
+<script src="characters/deadeye.js?v=3"></script>
+<script src="characters/kaboom.js?v=3"></script>
+<script src="characters/spray.js?v=3"></script>
+<script src="characters/ratatat.js?v=3"></script>
+<script src="characters/bones.js?v=3"></script>
+<script src="characters/pucker.js?v=3"></script>
+<script src="characters/lazer.js?v=3"></script>
+<script src="characters/smacko.js?v=3"></script>
+<script src="characters/cattywumpus.js?v=3"></script>
 
 <script>
 (function(){
@@ -381,7 +381,7 @@
     {name:'KABOOM',  ability:'NUKE',        color:'#ffd60a', fig:cfig(' vvv ','* *','/0\\',['\\','\\'],['/','/'],' n n ',' /\\  ')},
     {name:'SPRAY',   ability:'SHOTGUN',     color:'#0a84ff', fig:cfig(' ___ ','. .','[%]',['/','\\'],['\\','/'],' d b ',' b d ')},
     {name:'RATATAT', ability:'MINIGUN',     color:'#30d1d8', fig:cfig('     ','^ ^','|H|',['r','t'],['L','J'],' | | ',' /\\  ')},
-    {name:'BONES',   ability:'SKELETON',    color:'#ece8d6', fig:cfig('     ','o o','|||',['L','J'],['r','t'],' /\\  ',' | | ')},
+    {name:'DR. BRENNAN', key:'BONES', ability:'SKELETON', color:'#ece8d6', fig:cfig('     ','o o','|||',['L','J'],['r','t'],' /\\  ',' | | ')},
     {name:'PUCKER',  ability:'PUCK',        color:'#ff6fae', fig:cfig(' .-. ','o o','(8)',['(',')'],[')','('],' J L ',' L J ')},
     {name:'LAZER',   ability:'BEAM',        color:'#ff5af2', fig:cfig(' /^\\ ','= =','{W}',['-','-'],['~','~'],' | | ',' /\\  ')},
     {name:'SMACKO',  ability:'SLAP',        color:'#f0b98a', fig:cfig('     ','o o','(P)',['\\','/'],['/','\\'],' J L ',' L J ')},
@@ -696,8 +696,6 @@
     var totK=A.kills+B.kills, MILES=[100,300,600,1000,1500,2200,3000];
     while(koMile<MILES.length && totK>=MILES[koMile]){ popCallout(MILES[koMile]+' SLAIN','#ffd60a'); koMile++; }
     if(A.dead||B.dead){ var lo=(A.dead&&B.dead)?(A.hp<=B.hp?'A':'B'):(A.dead?'A':'B'), wi=(A.dead&&B.dead)?(A.hp===B.hp?null:(A.hp>B.hp?'A':'B')):(A.dead?'B':'A'); beginKO(lo,wi); return; }
-    var lead=(A.hp>B.hp+250)?'A':(B.hp>A.hp+250?'B':null);
-    if(lead&&lastLead&&lead!==lastLead) popCallout('LEAD FLIP!','#46e2a0'); if(lead)lastLead=lead;
     if(elapsed>=SURV_CAP){ beginKO(A.hp<=B.hp?'A':'B', A.hp===B.hp?null:(A.hp>B.hp?'A':'B')); return; }
   }
   function frame(now){
@@ -723,7 +721,6 @@
   function header(L){ var cx=L.cx; ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.font='800 54px "Inter",system-ui,sans-serif'; ctx.lineWidth=9; ctx.strokeStyle='#000'; ctx.fillStyle=L.color;
     ctx.strokeText(L.name,cx,150); ctx.fillText(L.name,cx,150);
-    ctx.font='500 26px "JetBrains Mono",monospace'; ctx.fillStyle='rgba(159,230,160,0.7)'; ctx.fillText(L.ability,cx,198);
     ctx.font='700 28px "Inter",system-ui,sans-serif'; ctx.fillStyle='#fff'; ctx.lineWidth=5; ctx.strokeStyle='rgba(0,0,0,0.55)';
     var st=L.kills+' KILLS   ·   '+Math.round(L.dmg)+' DMG'; ctx.strokeText(st,cx,244); ctx.fillText(st,cx,244); }
   function bottomStats(L){ var cx=L.cx; ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -1013,7 +1010,6 @@
     gtext(W/2, 292, elapsed.toFixed(1)+'s', 'rgba(159,230,160,0.5)', 0.85);
     for(var li=0;li<lanes.length;li++){ var L=lanes[li], cx=L.cx, col=L.dead?'#6a6f78':L.color;
       gtext(cx,150,L.name,col,1.7);
-      gtext(cx,200,L.ability,'rgba(159,230,160,0.6)',0.95);
       gtext(cx,238,String(L.kills),'#ffd60a',1.75); gtext(cx,274,'KILLS','rgba(255,214,10,0.6)',0.62);
       var segs=14, fr=Math.max(0,L.hp)/L.maxhp, fl=Math.round(fr*segs), bar='';
       for(var s=0;s<segs;s++) bar+=(s<fl?'\u2588':'\u2591');
@@ -1024,10 +1020,6 @@
       if(Lu.ultFlash>0){ ctx.save(); ctx.globalAlpha=Lu.ultFlash*0.34; ctx.fillStyle=Lu.color; ctx.fillRect(Lu.x0,0,Lu.w,H); ctx.restore(); }
       if(Lu.ultBannerT>0){ gtext(Lu.cx, H*0.40, 'ULTIMATE', Lu.color, 0.95); gtext(Lu.cx, H*0.45, Lu.ultName, '#ffffff', 1.5); }
       else if(Lu.ulted && !finished){ gtext(Lu.cx, 270, '* '+Lu.ultName, '#ffd60a', 0.6); } }
-    if(running && !finished && countdown<=0 && phase!=='alert'){ var lead=null;
-      if(phase==='boss'){ var b0=lanes[0].boss,b1=lanes[1].boss; if(b0&&b1){ if(b0.hp<b1.hp-1)lead=0; else if(b1.hp<b0.hp-1)lead=1; } }
-      else { if(lanes[0].kills>lanes[1].kills)lead=0; else if(lanes[1].kills>lanes[0].kills)lead=1; }
-      if(lead!=null) gtext(lanes[lead].cx, 270, '^ LEADING', '#46e2a0', 0.62); }
     if(callouts.length && countdown<=0){ var co=callouts[callouts.length-1]; ctx.save(); ctx.globalAlpha=Math.max(0,Math.min(1,co.life*1.5)); bigText(W/2,H*0.30,co.txt,co.color,1); ctx.restore(); }
     if(phase==='alert'){ var on=Math.floor(elapsed*6)%2===0;
       ctx.fillStyle='rgba(255,60,50,'+(on?0.16:0.06)+')'; ctx.fillRect(0,0,W,H);

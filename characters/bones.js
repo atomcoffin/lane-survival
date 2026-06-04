@@ -7,7 +7,7 @@
    Leave a list empty ([]) to keep the built-in default for that slot. */
 window.LS_CHARACTERS = window.LS_CHARACTERS || {};
 window.LS_CHARACTERS.BONES = {
-  name: "BONES",
+  name: "DR. BRENNAN",
   idle: ["bone zone", "rattle em", "spooky", "army rises"],
   hurt: ["my femur!", "ow, cracked", "oof, marrow"],
   ult:  ["NECROMANCY!", "rise up"]
