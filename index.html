@@ -420,7 +420,14 @@
       if(b){var rbx=b.x-L.cx,rby=b.y-L.hy; if(rbx*dx+rby*dy>0&&Math.abs(rbx*dy-rby*dx)<P.width+10)dmgBoss(L,P.bossDmg);} }
     else if(L.ability==='SHOTGUN'){ L.cd-=1; if(L.cd<=0){var n=Math.round(P.pellets);for(var s=0;s<n;s++){var ang=-Math.PI/2+(s-(n-1)/2)*P.spread;L.projectiles.push({x:L.cx,y:L.hy-L.r,vx:Math.cos(ang)*P.speed,vy:Math.sin(ang)*P.speed});} sZap('SHOTGUN'); L.actPulse=8; L.cd=Math.max(6,P.cooldown/ramp);} }
     else if(L.ability==='SNIPER'){ L.cd-=1; if(L.cd<=0){ var best=-1,bd=1e9; for(i=0;i<e.length;i++){var ddx=e[i].x-L.cx,ddy=e[i].y-L.hy,dd=ddx*ddx+ddy*ddy;if(dd<bd){bd=dd;best=i;}}
-      if(best>=0){L.tracer={x:e[best].x,y:e[best].y,life:5};killAt(L,best);sZap('SNIPER');L.actPulse=6;} else if(b){L.tracer={x:b.x,y:b.y,life:5};dmgBoss(L,P.bossDmg);sZap('SNIPER');L.actPulse=6;} L.cd=Math.max(2,P.cooldown/ramp);} }
+      if(best>=0){
+        if(L.ulted){ // BULLET TIME: shot pierces through the initial target, hitting everything on the line
+          var ox=L.cx, oy=L.hy-L.r, tdx=e[best].x-ox, tdy=e[best].y-oy, tlen=Math.hypot(tdx,tdy)||1, ux=tdx/tlen, uy=tdy/tlen;
+          L.tracer={x:ox+ux*1400, y:oy+uy*1400, life:5};
+          for(var pi=e.length-1;pi>=0;pi--){ var pe2=e[pi], rx=pe2.x-ox, ry=pe2.y-oy; if(rx*ux+ry*uy<0) continue; if(Math.abs(rx*uy-ry*ux)<pe2.r+22) killAt(L,pi); }
+        } else { L.tracer={x:e[best].x,y:e[best].y,life:5}; killAt(L,best); }
+        sZap('SNIPER'); L.actPulse=6;
+      } else if(b){L.tracer={x:b.x,y:b.y,life:5};dmgBoss(L,P.bossDmg);sZap('SNIPER');L.actPulse=6;} L.cd=Math.max(2,P.cooldown/ramp);} }
     else if(L.ability==='FROG TONGUE'){ L.cd-=1; if(L.cd<=0&&(e.length||b)){ var jumps=Math.round(P.jumps),range=P.range*P.range; var pts=[{x:L.cx,y:L.hy-L.r}],last=pts[0];
         for(var jmp=0;jmp<jumps;jmp++){ var biC=-1,bddC=range; for(i=0;i<e.length;i++){var qx=e[i].x-last.x,qy=e[i].y-last.y,q=qx*qx+qy*qy;if(q<bddC){bddC=q;biC=i;}}
           if(biC>=0){pts.push({x:e[biC].x,y:e[biC].y});last=pts[pts.length-1];killAt(L,biC);} else break; }
