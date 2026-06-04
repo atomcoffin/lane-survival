@@ -610,7 +610,6 @@
     if(L.say){ L.say.life-=FIXED/1000; if(L.say.life<=0)L.say=null; }
     L.sayCd-=FIXED/1000; if(L.sayCd<=0 && !L.say && countdown<=0){ popSay(L,'idle'); L.sayCd=3.5+Math.random()*4.5; }
     for(var fi=L.fx.length-1;fi>=0;fi--){ if(--L.fx[fi].life<=0)L.fx.splice(fi,1); }
-    for(var fi=L.fx.length-1;fi>=0;fi--){ if(--L.fx[fi].life<=0)L.fx.splice(fi,1); }
     L.waveT-=FIXED/1000;
     if(L.waveT<=0 && L.enemies.length<160){ var waveN=Math.min(60,2+Math.floor(elapsed*0.50)), gap=Math.max(0.30,2.0-elapsed*0.024);
       for(var wn=0;wn<waveN;wn++) spawnEnemy(L); L.waveT=gap; }
