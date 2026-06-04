@@ -167,7 +167,7 @@
     BEAM:[{k:'speed',l:'Spin speed',min:0.01,max:0.15,step:0.005,def:0.045},{k:'width',l:'Beam width',min:10,max:80,step:2,def:30},{k:'bossDmg',l:'Boss dmg/tick',min:2,max:300,step:1,def:55}],
     SHOTGUN:[{k:'cooldown',l:'Cooldown',min:6,max:60,step:1,def:20},{k:'pellets',l:'Pellets',min:3,max:16,step:1,def:7},{k:'spread',l:'Spread',min:0.05,max:0.5,step:0.01,def:0.16},{k:'speed',l:'Pellet speed',min:10,max:40,step:1,def:22},{k:'bossDmg',l:'Boss dmg/pellet',min:1,max:100,step:1,def:6}],
     SNIPER:[{k:'cooldown',l:'Cooldown',min:2,max:30,step:1,def:7},{k:'bossDmg',l:'Boss dmg/shot',min:2,max:200,step:2,def:12}],
-    'FROG TONGUE':[{k:'jumps',l:'Tongue licks',min:2,max:60,step:1,def:24},{k:'range',l:'Tongue reach',min:100,max:600,step:10,def:360},{k:'cooldown',l:'Lash cooldown',min:4,max:60,step:1,def:16},{k:'bossDmg',l:'Boss dmg',min:2,max:300,step:2,def:28}],
+    'FROG TONGUE':[{k:'jumps',l:'Tongue licks',min:2,max:60,step:1,def:24},{k:'range',l:'Tongue reach',min:100,max:600,step:10,def:360},{k:'cooldown',l:'Lash cooldown',min:4,max:60,step:1,def:30},{k:'bossDmg',l:'Boss dmg',min:2,max:300,step:2,def:28}],
     FART:[{k:'cooldown',l:'Gap between',min:0,max:120,step:5,def:25},{k:'speed',l:'Spread speed',min:4,max:24,step:1,def:10},{k:'thickness',l:'Cloud size',min:12,max:90,step:2,def:42},{k:'bossDmg',l:'Boss dmg/tick',min:1,max:150,step:1,def:34}],
     BLACKHOLE:[{k:'cooldown',l:'Cooldown',min:30,max:240,step:5,def:120},{k:'duration',l:'Duration',min:60,max:300,step:10,def:150},{k:'pull',l:'Pull force',min:1,max:10,step:0.5,def:4.2},{k:'range',l:'Pull range',min:150,max:500,step:10,def:340},{k:'bossDmg',l:'Boss dmg/tick',min:1,max:100,step:1,def:3}],
     MINIGUN:[{k:'cooldown',l:'Fire interval',min:1,max:10,step:1,def:2},{k:'speed',l:'Bullet speed',min:12,max:40,step:1,def:26},{k:'spread',l:'Spread',min:0,max:0.5,step:0.02,def:0.18},{k:'bossDmg',l:'Boss dmg/hit',min:1,max:100,step:1,def:6}],
@@ -441,7 +441,7 @@
     else if(L.ability==='FROG TONGUE'){ L.cd-=1; if(L.cd<=0&&(e.length||b)){ var jumps=Math.round(P.jumps),range=P.range*P.range; var pts=[{x:L.cx,y:L.hy-L.r}],last=pts[0];
         for(var jmp=0;jmp<jumps;jmp++){ var biC=-1,bddC=range; for(i=0;i<e.length;i++){var qx=e[i].x-last.x,qy=e[i].y-last.y,q=qx*qx+qy*qy;if(q<bddC){bddC=q;biC=i;}}
           if(biC>=0){pts.push({x:e[biC].x,y:e[biC].y});last=pts[pts.length-1];killAt(L,biC);} else break; }
-        if(b){pts.push({x:b.x,y:b.y});dmgBoss(L,P.bossDmg);} if(pts.length>1){L.chainPts=pts;L.chainLife=7;sFrog();L.actPulse=8;} L.cd=Math.max(4,P.cooldown/ramp);}
+        if(b){pts.push({x:b.x,y:b.y});dmgBoss(L,P.bossDmg);} if(pts.length>1){L.chainPts=pts;L.chainLife=16;L.chainMax=16;sFrog();L.actPulse=8;} L.cd=Math.max(24,P.cooldown/ramp);}
       // AMPLIFY ult: each deployed lily pad is its own auto-firing tongue turret
       if(L.ulted && L.pads.length){ var padR2=P.range*P.range*1.6;
         for(var pp=0;pp<L.pads.length;pp++){ var pad=L.pads[pp]; if(pad.fire>0)pad.fire--; pad.cd--;
@@ -805,7 +805,11 @@
         for(var pp=0;pp<L.pads.length;pp++){ var pad=L.pads[pp], prr=22, pc0=w2c(pad.x-prr),pc1=w2c(pad.x+prr),pr0=w2r(pad.y-prr),pr1=w2r(pad.y+prr);
           for(var pry=pr0;pry<=pr1;pry++)for(var prx=pc0;prx<=pc1;prx++){ var ppx=prx*cellW+cellW/2,ppy=pry*cellH+cellH/2,pdd=Math.hypot(ppx-pad.x,ppy-pad.y); if(pdd>prr)continue; var pang=Math.atan2(ppy-pad.y,ppx-pad.x); if(pang>0.45&&pang<1.35)continue; /* notch */ plot(prx,pry,(pdd>prr*0.62?'o':':'),padCol); }
           if(pad.fire>0 && pad.tgt){ line(pad.x,pad.y,pad.tgt.x,pad.tgt.y,'~','#ff6fae'); plot(w2c(pad.tgt.x),w2r(pad.tgt.y),'O','#ff6fae'); } } }
-      if(L.chainPts&&L.chainLife>0){ var TC='#ff6fae'; for(var cI=1;cI<L.chainPts.length;cI++)line(L.chainPts[cI-1].x,L.chainPts[cI-1].y,L.chainPts[cI].x,L.chainPts[cI].y,'~',TC); var ttip=L.chainPts[L.chainPts.length-1]; plot(w2c(ttip.x),w2r(ttip.y),'O',TC); }
+      if(L.chainPts&&L.chainLife>0){ var TC='#ff6fae', cp=L.chainPts, cm=L.chainMax||7, age=1-(L.chainLife/cm), reach=age<0.5?(age*2):Math.max(0,1-(age-0.5)*2);
+        var segL=[],tot=0; for(var cs=1;cs<cp.length;cs++){ var dl=Math.hypot(cp[cs].x-cp[cs-1].x,cp[cs].y-cp[cs-1].y); segL.push(dl); tot+=dl; }
+        var want=reach*tot, accL=0, tipx=cp[0].x, tipy=cp[0].y;
+        for(var cs2=1;cs2<cp.length;cs2++){ var dl2=segL[cs2-1]||0; if(accL+dl2<=want){ line(cp[cs2-1].x,cp[cs2-1].y,cp[cs2].x,cp[cs2].y,'~',TC); tipx=cp[cs2].x; tipy=cp[cs2].y; accL+=dl2; } else { var fr=dl2>0?(want-accL)/dl2:0; tipx=cp[cs2-1].x+(cp[cs2].x-cp[cs2-1].x)*fr; tipy=cp[cs2-1].y+(cp[cs2].y-cp[cs2-1].y)*fr; line(cp[cs2-1].x,cp[cs2-1].y,tipx,tipy,'~',TC); break; } }
+        plot(w2c(tipx),w2r(tipy),'O',TC); }
       if(L.tracer){ line(L.cx,L.hy-L.r,L.tracer.x,L.tracer.y,'=',L.color); var tc=w2c(L.tracer.x),tr=w2r(L.tracer.y); plot(tc,tr,'*','#ffffff'); plot(tc+1,tr,'+',L.color); plot(tc-1,tr,'+',L.color); plot(tc,tr-1,'+',L.color); plot(tc,tr+1,'+',L.color); }
       for(i=0;i<L.projectiles.length;i++){ var pj=L.projectiles[i],psp=Math.hypot(pj.vx,pj.vy)||1; plot(w2c(pj.x-pj.vx/psp*cellH),w2r(pj.y-pj.vy/psp*cellH),'.',L.color); plot(w2c(pj.x),w2r(pj.y),'!','#ffffff'); }
       for(i=0;i<L.pucks.length;i++) disc(L.pucks[i].x,L.pucks[i].y,L.pucks[i].r,'O',L.color);
