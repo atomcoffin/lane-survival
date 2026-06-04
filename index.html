@@ -215,9 +215,9 @@
   var callouts=[], koMile=0, lastLead=null;
   var FIXED=1000/60, acc=0, lastFrame=0;
   var phase='fight', alertT=0;
-  var asciiMode=true, asciiCols=64, sbuf=document.createElement('canvas'), sctx=sbuf.getContext('2d',{willReadFrequently:true});
+  var asciiMode=true, asciiCols=64;
   var RAMP=' .,:;irsXA253hMHGS#9B&@';
-  var gridCols=0, gridRows=0, gridBg=document.createElement('canvas'), gbx=gridBg.getContext('2d');
+  var gridCols=0, gridRows=0, gridScale=0, gridBg=document.createElement('canvas'), gbx=gridBg.getContext('2d');
 
   /* ============ AUDIO ============ */
   var AC=null, master=null, recDest=null, noiseBuf=null, lastTick=0, lastBossHit=0;
@@ -814,9 +814,14 @@
         ctx.font='800 74px "Inter",system-ui,sans-serif'; ctx.fillStyle='#fff'; ctx.strokeText('SURVIVES',W/2,H*0.53); ctx.fillText('SURVIVES',W/2,H*0.53);
       } else {ctx.font='800 96px "Inter",system-ui,sans-serif'; ctx.fillStyle='#fff'; ctx.lineWidth=16; ctx.strokeStyle='#000'; ctx.strokeText('DRAW',W/2,H*0.46); ctx.fillText('DRAW',W/2,H*0.46);} }
   }
+  function byYDesc(p,q){ return q.y-p.y; }
   function ensureGrid(cols,rows,cellW,cellH){
-    if(gridCols===cols&&gridRows===rows) return;
-    gridCols=cols; gridRows=rows; gridBg.width=W; gridBg.height=H;
+    if(gridCols===cols&&gridRows===rows&&gridScale===CAPSCALE) return;
+    gridCols=cols; gridRows=rows; gridScale=CAPSCALE;
+    // render the static dot-grid at the full backing (device) resolution so draw()'s blit is 1:1
+    // (no per-frame upscale resample), and the dots stay crisp at any capture scale.
+    gridBg.width=Math.round(W*CAPSCALE); gridBg.height=Math.round(H*CAPSCALE);
+    gbx.setTransform(CAPSCALE,0,0,CAPSCALE,0,0);
     gbx.clearRect(0,0,W,H); gbx.fillStyle='rgba(255,255,255,0.05)'; gbx.textAlign='center'; gbx.textBaseline='middle';
     gbx.font='700 '+Math.ceil(cellH*0.92)+'px "JetBrains Mono",monospace';
     for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){ gbx.fillText('.', c*cellW+cellW/2, r*cellH+cellH/2); }
@@ -859,7 +864,7 @@
       // AMPLIFY flood: rippling water across the whole lane
       if(L.flooded){ var wfr0=w2r(FIELD_TOP), wtn=elapsed, wgl=['~','-','='];
         for(var wfr=wfr0;wfr<rows;wfr++)for(var wfc=clipLo;wfc<=clipHi;wfc++){ var wv=Math.sin(wfc*0.6+wfr*0.9+wtn*2.2); if(wv<0.45)continue; plot(wfc,wfr,wgl[(wfc+wfr)%3],(wv>0.82?'#6fbdf0':'#2f6fb0')); } }
-      occ={}; e.sort(function(p,q){return q.y-p.y;});
+      occ={}; e.sort(byYDesc);
       var ech=cfg.enemyChar||'&'; var bk0=(BOSSES[cfg.bossIdx]||{}).kind; if(bk0&&BENEMY[bk0]&&(cfg.enemyChar==='&'||!cfg.enemyChar)) ech=BENEMY[bk0];
       var eech=(bk0&&BELITE[bk0])?BELITE[bk0]:'\ud83d\udc79';
       for(i=0;i<e.length;i++){ var en=e[i];
@@ -1030,7 +1035,7 @@
   function draw(){
     if(asciiMode){ var cols=asciiCols, cellW=W/cols, cellH=cellW/0.55, rows=Math.max(1,Math.floor(H/cellH));
       ensureGrid(cols,rows,cellW,cellH);
-      ctx.fillStyle='#070809'; ctx.fillRect(0,0,W,H); ctx.drawImage(gridBg,0,0);
+      ctx.fillStyle='#070809'; ctx.fillRect(0,0,W,H); ctx.drawImage(gridBg,0,0,W,H);
       asciiGrid(cols,rows,cellW,cellH);
       asciiHUD(cols,cellW,cellH);
     } else { drawField(); drawHUD(); }
