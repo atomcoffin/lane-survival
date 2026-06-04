@@ -1045,7 +1045,13 @@
   }
 
   /* ============ RECORDING ============ */
-  var rec={state:'inactive'},chunks=[];
+  var rec={state:'inactive'},chunks=[],recStartMs=0;
+  function clipName(){ var pad=function(n){return (n<10?'0':'')+n;};
+    var nm=function(s){ return String(s||'').toUpperCase().replace(/[^A-Z0-9]+/g,'').slice(0,16)||'LANE'; };
+    var dur=Math.max(1,Math.round((performance.now()-recStartMs)/1000));
+    var d=new Date(), stamp=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+    var a=lanes[0]?lanes[0].name:'A', b=lanes[1]?lanes[1].name:'B';
+    return nm(a)+'-vs-'+nm(b)+'_'+dur+'s_'+stamp+'.webm'; }
   function pickMime(){var o=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm;codecs=vp9','video/webm'];for(var i=0;i<o.length;i++){if(window.MediaRecorder&&MediaRecorder.isTypeSupported(o[i]))return o[i];}return '';}
   function startRec(){ if(!window.MediaRecorder||!cv.captureStream){setStatus('RECORDING UNSUPPORTED — SCREEN-RECORD');return;}
     ensureAudio();
@@ -1055,10 +1061,10 @@
       if(recDest&&recDest.stream.getAudioTracks().length){ recDest.stream.getAudioTracks().forEach(function(tr){stream.addTrack(tr);}); }
       var m=pickMime(), vbr=Math.round(16000000*CAPSCALE); rec=new MediaRecorder(stream,m?{mimeType:m,videoBitsPerSecond:vbr}:undefined); chunks=[];
       rec.ondataavailable=function(e){if(e.data&&e.data.size)chunks.push(e.data);};
-      rec.onstop=function(){var b=new Blob(chunks,{type:'video/webm'}),u=URL.createObjectURL(b),dl=document.getElementById('dl');dl.href=u;dl.style.display='block';document.getElementById('rec').classList.remove('on');
+      rec.onstop=function(){var b=new Blob(chunks,{type:'video/webm'}),u=URL.createObjectURL(b),dl=document.getElementById('dl');dl.href=u;dl.download=clipName();dl.style.display='block';document.getElementById('rec').classList.remove('on');
         CAPSCALE=1; applyCaptureScale(); draw();   // drop back to fast 1x preview
         setStatus('CLIP READY \u00b7 '+(b.size/1048576).toFixed(1)+' MB');};
-      rec.start(); document.getElementById('rec').classList.add('on'); setStatus('RECORDING\u2026');
+      recStartMs=performance.now(); rec.start(); document.getElementById('rec').classList.add('on'); setStatus('RECORDING\u2026');
     }catch(err){ CAPSCALE=1; applyCaptureScale(); draw(); setStatus('REC ERROR — SCREEN-RECORD'); }
   }
   document.getElementById('rec').onclick=function(){ if(rec.state==='recording'){try{rec.stop();}catch(e){}}else startRec(); };
