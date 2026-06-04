@@ -451,7 +451,13 @@
     else if(L.ability==='BLACKHOLE'){ L.cd-=1;
       if(!L.hole&&L.cd<=0){L.hole={x:(b?b.x:L.x0+L.w*0.5),y:(b?b.y:FIELD_TOP+L.w*0.5),life:Math.round(P.duration),ang:0};sZap('BLACKHOLE');}
       if(L.hole){L.hole.life-=1;L.hole.ang+=0.2; if(b){L.hole.x+=(b.x-L.hole.x)*0.06;L.hole.y+=(b.y-L.hole.y)*0.06;} var hx=L.hole.x,hy=L.hole.y,core=34,pr2=P.range;
-        for(i=e.length-1;i>=0;i--){var en2=e[i],gx=hx-en2.x,gy=hy-en2.y,gd=Math.hypot(gx,gy)||1; if(gd<core){killAt(L,i);continue;} if(gd<pr2){en2.x+=gx/gd*P.pull;en2.y+=gy/gd*P.pull;}}
+        for(i=e.length-1;i>=0;i--){var en2=e[i],gx=hx-en2.x,gy=hy-en2.y,gd=Math.hypot(gx,gy)||1;
+          if(gd<core){ var OL=(lanes[0]===L)?lanes[1]:lanes[0];
+            if(L.ulted && OL && !OL.dead && Math.random()<0.35){ // EVENT HORIZON: warp the enemy into the rival's lane
+              addFx(L,en2.x,en2.y,'@',L.color); en2.x=OL.x0+22+Math.random()*(OL.w-44); en2.y=FIELD_TOP+120+Math.random()*40; en2.flash=0; OL.enemies.push(en2); e.splice(i,1); addFx(OL,en2.x,en2.y,'@',L.color); }
+            else killAt(L,i);
+            continue; }
+          if(gd<pr2){en2.x+=gx/gd*P.pull;en2.y+=gy/gd*P.pull;}}
         if(b&&Math.hypot(hx-b.x,hy-b.y)<core+b.r)dmgBoss(L,P.bossDmg);
         if(L.hole.life<=0){L.hole=null;L.cd=Math.round(P.cooldown);}}
     }
