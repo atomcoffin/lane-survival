@@ -386,7 +386,7 @@
     return {side:side,name:conf.name||side,color:conf.color,ability:ab,params:prm,x0:x0,w:w,cx:x0+w/2,hy:H*0.86,r:46,
       hp:conf.hp,maxhp:conf.hp,kills:0,dmg:0,spawned:0,toSpawn:cfg.count,waveT:0.5,
       enemies:[],skeletons:[],fx:[],projectiles:[],pucks:[],mist:[],mistCd:0,orbAng:0,beamAng:-Math.PI/2,cd:0,nukeFlash:0,nukeR:200,tracer:null,
-      wave:-1, fartGap:0, actPulse:0, hole:null, hand:null, chainPts:null, chainLife:0, fig:(conf.char!=null&&CHARACTERS[conf.char]?CHARACTERS[conf.char].fig:makeHumanoid()), figArt:(conf.char!=null&&CHARACTERS[conf.char]&&CHARACTERS[conf.char].art?CHARACTERS[conf.char].art:null), blinkSeed:Math.random()*6.28,
+      wave:-1, fartGap:0, actPulse:0, hole:null, hand:null, hand2:null, cd2:null, chainPts:null, chainLife:0, fig:(conf.char!=null&&CHARACTERS[conf.char]?CHARACTERS[conf.char].fig:makeHumanoid()), figArt:(conf.char!=null&&CHARACTERS[conf.char]&&CHARACTERS[conf.char].art?CHARACTERS[conf.char].art:null), blinkSeed:Math.random()*6.28,
       boss:null, bossDead:false, dead:false, cleared:false,
       ultReady:true, ulted:false, ultT:0, ultFlash:0, ultBannerT:0, ultName:(conf.char!=null&&CHARACTERS[conf.char]?ULTS[CHARACTERS[conf.char].name]:'OVERDRIVE')}; }
   function reset(){ cancelAnimationFrame(raf); running=false; finished=false; winnerSide=null; elapsed=0; countdown=0; phase='survive'; alertT=0; callouts=[]; koMile=0; lastLead=null; ko=null;
@@ -397,6 +397,15 @@
     L.enemies.push({x:L.cx+(Math.random()-0.5)*L.w*0.5, y:FIELD_TOP+145+Math.random()*30, r:elite?30:22, hp:ghp, elite:elite, flash:0,
       sm:(elite?0.6:0.9)+Math.random()*0.2, sw:0.25+Math.random()*0.45, sf:1.5+Math.random()*2, ph:Math.random()*6.28}); L.spawned++; }
   function addFx(L,x,y,ch,col){ if(L.fx.length>140)L.fx.shift(); L.fx.push({x:x,y:y,life:7,ch:ch,col:col}); }
+  function slamHand(L,P){ var e=L.enemies, pw=P.palmW, ph=pw*0.62, hx=L.cx, hy2=(FIELD_TOP+L.hy)/2, i;
+    if(e.length){ var bi=-1,bd=1e9; for(i=0;i<e.length;i++){ var dxn=e[i].x-L.cx,dyn=e[i].y-L.hy,dn=dxn*dxn+dyn*dyn; if(dn<bd){bd=dn;bi=i;} } hx=e[bi].x; hy2=e[bi].y; }
+    hx=Math.max(L.x0+pw*0.6,Math.min(L.x0+L.w-pw*0.6,hx));
+    for(i=e.length-1;i>=0;i--){ var ens=e[i]; if(Math.abs(ens.x-hx)<pw && Math.abs(ens.y-hy2)<ph) killAt(L,i); }
+    for(i=L.enemies.length-1;i>=0;i--){ var esh=L.enemies[i],sdx=esh.x-hx,sdy=esh.y-hy2,sdd=Math.hypot(sdx,sdy)||1; if(sdd<pw*2.2){ var fpush=(1-sdd/(pw*2.2))*pw*0.85; esh.x+=sdx/sdd*fpush; esh.y+=sdy/sdd*fpush;
+      if(esh.x<L.x0+16)esh.x=L.x0+16; if(esh.x>L.x0+L.w-16)esh.x=L.x0+L.w-16; if(esh.y<FIELD_TOP+40)esh.y=FIELD_TOP+40; } }
+    for(var hd=0;hd<12;hd++) addFx(L, hx+(Math.random()-0.5)*pw*2.0, hy2+ph*0.5+(Math.random()-0.5)*ph*0.5, (hd&1?'o':'.'), '#c9bfa3');
+    for(var hf=0;hf<6;hf++) addFx(L, hx+(Math.random()-0.5)*pw, hy2+(Math.random()-0.5)*ph, (hf&1?'*':'x'), '#ffffff');
+    sZap('SLAP'); L.actPulse=12; return {x:hx,y:hy2,t:18}; }
   function killAt(L,idx){ var en=L.enemies[idx]; if(!en)return; if(en.hp>1){ en.hp--; en.flash=3; addFx(L,en.x,en.y,'*','#ffffff'); sTick(); return; } addFx(L,en.x,en.y,'x','#ff9a6b'); L.enemies.splice(idx,1); L.kills++; L.dmg++; sTick(); }
   function dmgBoss(L,amt){ if(!L.boss||L.boss.invuln)return; var d=amt*(L.ulted?1.35:1); L.boss.hp-=d; L.dmg+=d; L.boss.flash=1; addFx(L,L.boss.x+(Math.random()-0.5)*L.boss.r,L.boss.y+(Math.random()-0.5)*L.boss.r*0.6,'*','#ffffff'); sBossHit(); if(L.boss.hp<=0){ L.boss=null; L.bossDead=true; } }
 
@@ -487,20 +496,12 @@
         if(b && (b.x-sk2.x)*(b.x-sk2.x)+(b.y-sk2.y)*(b.y-sk2.y)<(b.r+12)*(b.r+12)){ dmgBoss(L,P.bossDmg); L.skeletons.splice(ks,1); } }
     }
 
-    else if(L.ability==='SLAP'){ L.cd-=1;
-      if(L.cd<=0){ var pw=P.palmW, ph=pw*0.62, hx=L.cx, hy2=(FIELD_TOP+L.hy)/2;
-        // slam the nearest threat
-        if(e.length){ var bi=-1,bd=1e9; for(i=0;i<e.length;i++){ var dxn=e[i].x-L.cx,dyn=e[i].y-L.hy,dn=dxn*dxn+dyn*dyn; if(dn<bd){bd=dn;bi=i;} } hx=e[bi].x; hy2=e[bi].y; }
-        hx=Math.max(L.x0+pw*0.6,Math.min(L.x0+L.w-pw*0.6,hx));
-        for(i=e.length-1;i>=0;i--){ var ens=e[i]; if(Math.abs(ens.x-hx)<pw && Math.abs(ens.y-hy2)<ph) killAt(L,i); }
-        // shove survivors away from the impact
-        for(i=L.enemies.length-1;i>=0;i--){ var esh=L.enemies[i],sdx=esh.x-hx,sdy=esh.y-hy2,sdd=Math.hypot(sdx,sdy)||1; if(sdd<pw*2.2){ var fpush=(1-sdd/(pw*2.2))*pw*0.85; esh.x+=sdx/sdd*fpush; esh.y+=sdy/sdd*fpush;
-          if(esh.x<L.x0+16)esh.x=L.x0+16; if(esh.x>L.x0+L.w-16)esh.x=L.x0+L.w-16; if(esh.y<FIELD_TOP+40)esh.y=FIELD_TOP+40; } }
-        if(b && Math.abs(b.x-hx)<pw+b.r && Math.abs(b.y-hy2)<ph+b.r) dmgBoss(L,P.bossDmg);
-        for(var hd=0;hd<12;hd++) addFx(L, hx+(Math.random()-0.5)*pw*2.0, hy2+ph*0.5+(Math.random()-0.5)*ph*0.5, (hd&1?'o':'.'), '#c9bfa3'); // dust kicked along the ground
-        for(var hf=0;hf<6;hf++) addFx(L, hx+(Math.random()-0.5)*pw, hy2+(Math.random()-0.5)*ph, (hf&1?'*':'x'), '#ffffff'); // impact sparks
-        L.hand={x:hx,y:hy2,t:18}; sZap('SLAP'); L.actPulse=12; L.cd=Math.max(20,P.cooldown/ramp); }
+    else if(L.ability==='SLAP'){ L.cd-=1; var slapGap=Math.max(20,P.cooldown/ramp);
+      if(L.cd<=0){ L.hand=slamHand(L,P); L.cd=slapGap; }
       if(L.hand){ L.hand.t--; if(L.hand.t<=0)L.hand=null; }
+      // MEGA SMACK ult: a second hand offset by half a beat so two hands alternate
+      if(L.ulted){ if(L.cd2==null) L.cd2=Math.round(slapGap/2); L.cd2-=1; if(L.cd2<=0){ L.hand2=slamHand(L,P); L.cd2=slapGap; } }
+      if(L.hand2){ L.hand2.t--; if(L.hand2.t<=0)L.hand2=null; }
     }
 
     // projectiles (SHOTGUN / MINIGUN)
@@ -743,15 +744,17 @@
       ctx.font='700 '+Math.ceil(cellH*0.95)+'px "JetBrains Mono",monospace';
       for(var ksr=0;ksr<L.skeletons.length;ksr++){ var skk=L.skeletons[ksr],skc=w2c(skk.x),skr=w2r(skk.y); plot(skc,skr,'A','#ece8d6'); plot(skc,skr-1,'o','#ece8d6'); }
       for(i=0;i<L.fx.length;i++){ var fxp=L.fx[i],fg=fxp.life>4?fxp.ch:(fxp.life>2?'*':'.'); plot(w2c(fxp.x),w2r(fxp.y),fg,fxp.col); }
-      if(L.ability==='SLAP' && L.hand){ var H2=L.hand, pw=P.palmW, yoff=(H2.t>13)?(H2.t-13)*12:0;
-        var hx=H2.x, hyy=H2.y-yoff, ph=pw*0.62, hc0=w2c(hx-pw), hc1=w2c(hx+pw), hr0=w2r(hyy-ph), hr1=w2r(hyy+ph), hspan=hc1-hc0, midR=Math.round(hr0+(hr1-hr0)*0.52);
-        // palm (upper), tapering toward the wrist at the top
-        for(var hrr=hr0;hrr<=midR;hrr++){ var tp=(midR-hrr)/Math.max(1,(midR-hr0)), inset=Math.round(tp*hspan*0.20); for(var hcc=hc0+inset;hcc<=hc1-inset;hcc++) plot(hcc,hrr,'#',L.color); }
-        // four splayed fingers (lower), varied length with the middle longest
-        var fcols=[0.15,0.38,0.62,0.85], flen=[0.60,1.0,0.86,0.52];
-        for(var ff=0;ff<4;ff++){ var fx=hc0+Math.round(hspan*fcols[ff]), fbot=midR+Math.round((hr1-midR)*flen[ff]); for(var fr=midR;fr<=fbot;fr++) plot(fx,fr,'#',L.color); }
-        // thumb stub off the side, mirrored per lane
-        var thR=hr0+Math.round((midR-hr0)*0.55); if(li===0){ for(var tk=0;tk<4;tk++) plot(hc1+tk, thR+tk, '#', L.color); } else { for(var tk=0;tk<4;tk++) plot(hc0-tk, thR+tk, '#', L.color); } }
+      if(L.ability==='SLAP'){ var hands=[L.hand,L.hand2];
+        for(var hI=0;hI<hands.length;hI++){ var H2=hands[hI]; if(!H2) continue;
+          var pw=P.palmW, yoff=(H2.t>13)?(H2.t-13)*12:0;
+          var hx=H2.x, hyy=H2.y-yoff, ph=pw*0.62, hc0=w2c(hx-pw), hc1=w2c(hx+pw), hr0=w2r(hyy-ph), hr1=w2r(hyy+ph), hspan=hc1-hc0, midR=Math.round(hr0+(hr1-hr0)*0.52);
+          // palm (lower, toward Smacko), tapering toward the wrist at the bottom
+          for(var hrr=midR;hrr<=hr1;hrr++){ var tp=(hrr-midR)/Math.max(1,(hr1-midR)), inset=Math.round(tp*hspan*0.20); for(var hcc=hc0+inset;hcc<=hc1-inset;hcc++) plot(hcc,hrr,'#',L.color); }
+          // four splayed fingers (upper), pointing toward the cave, middle longest
+          var fcols=[0.15,0.38,0.62,0.85], flen=[0.60,1.0,0.86,0.52];
+          for(var ff=0;ff<4;ff++){ var fx=hc0+Math.round(hspan*fcols[ff]), ftop=midR-Math.round((midR-hr0)*flen[ff]); for(var fr=ftop;fr<=midR;fr++) plot(fx,fr,'#',L.color); }
+          // thumb stub off the side at palm level, mirrored per lane
+          var thR=midR+Math.round((hr1-midR)*0.4); if(li===0){ for(var tk=0;tk<4;tk++) plot(hc1+tk, thR-tk, '#', L.color); } else { for(var tk=0;tk<4;tk++) plot(hc0-tk, thR-tk, '#', L.color); } } }
       if(L.ability==='FART'&&L.wave>0&&!L.dead){ var rad=L.wave, band=P.thickness, maxR=L.w*1.1;
         var gl=['s','o','O','c','~','.',':','o'], tnow=Math.floor(elapsed*10);
         // dense gas puff clinging to the source (the butt) so it reads as emanating from the hero
