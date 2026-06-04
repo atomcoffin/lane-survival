@@ -354,6 +354,21 @@
     {name:'SMACKO',  ability:'SLAP',        color:'#f0b98a', fig:cfig('     ','o o','(P)',['\\','/'],['/','\\'],' J L ',' L J ')}
   ];
   var ULTS={GASBAG:'DUTCH OVEN',RIBBIT:'AMPLIFY',VOID:'EVENT HORIZON',BUZZSAW:'OVERCLOCK',DEADEYE:'BULLET TIME',KABOOM:'FALLOUT',SPRAY:'FULL CHOKE',RATATAT:'SPIN UP',BONES:'NECROMANCY',PUCKER:'MULTIBALL',LAZER:'OVERLOAD',SMACKO:'MEGA SMACK'};
+  // per-character one-liners that pop above the hero; {idle} chatter, {hurt} when struck, {ult} on ultimate
+  var QUIPS={
+    GASBAG:{idle:["BRAAAP!","pull my finger","silent killer","gas leak!","who dealt it?"],hurt:["my gas!","oof, rancid","you smelled that?"],ult:["DUTCH OVEN!","hold your breath"]},
+    RIBBIT:{idle:["ribbit ribbit","hop hop","catch flies","so fly","lily good"],hurt:["croak!","ow, my legs","not toad-ally cool"],ult:["FLOOD TIME!","make it rain","pond's mine now"]},
+    VOID:{idle:["into the void","goodbye","gravity sux","stare deep"],hurt:["spaghetti'd!","my event!","ow, dense"],ult:["EVENT HORIZON!","no escape"]},
+    BUZZSAW:{idle:["rip n tear","spinnin","buzz buzz","stay sharp"],hurt:["dull moment","ow, chipped","jammed!"],ult:["OVERCLOCK!","max rpm"]},
+    DEADEYE:{idle:["one shot","bang","headshot","hold still"],hurt:["missed me?","tagged!","ow, reload"],ult:["BULLET TIME!","slow down"]},
+    KABOOM:{idle:["boom baby","light it","fire in hole","kaboom?"],hurt:["short fuse!","ow, hot","defused?"],ult:["FALLOUT!","big badaboom"]},
+    SPRAY:{idle:["spray n pray","pump it","eat lead","spread out"],hurt:["winged me!","ow, pellets","reloading"],ult:["FULL CHOKE!","point blank"]},
+    RATATAT:{idle:["dakka dakka","spin up","brrrt","no reloads"],hurt:["jammed!","ow, hot barrel","cover me"],ult:["SPIN UP!","more dakka"]},
+    BONES:{idle:["bone zone","rattle em","spooky","army rises"],hurt:["my femur!","ow, cracked","oof, marrow"],ult:["NECROMANCY!","rise up"]},
+    PUCKER:{idle:["mwah","love hurts","kissy kissy","heart on"],hurt:["heartbroke!","ow, my lips","rude!"],ult:["MULTIBALL!","spread the love"]},
+    LAZER:{idle:["pew pew","laser focus","beam me","fully charged"],hurt:["overheating!","ow, sparks","short circuit"],ult:["OVERLOAD!","max power"]},
+    SMACKO:{idle:["smack!","talk to the hand","slap city","high five?"],hurt:["my palm!","ow, stings","backhand!"],ult:["MEGA SMACK!","feel this"]}
+  };
   var ULT_THRESH=0.10;
   var BEAR_GAP=270, ROAR_DUR=72, SURV_CAP=160;
   var SPRITES={
@@ -386,7 +401,8 @@
     return {side:side,name:conf.name||side,color:conf.color,ability:ab,params:prm,x0:x0,w:w,cx:x0+w/2,hy:H*0.86,r:46,
       hp:conf.hp,maxhp:conf.hp,kills:0,dmg:0,spawned:0,toSpawn:cfg.count,waveT:0.5,
       enemies:[],skeletons:[],fx:[],projectiles:[],pucks:[],mist:[],mistCd:0,orbAng:0,beamAng:-Math.PI/2,cd:0,nukeFlash:0,nukeR:200,tracer:null,
-      wave:-1, fartGap:0, actPulse:0, hole:null, hand:null, hand2:null, cd2:null, pads:[], chainPts:null, chainLife:0, fig:(conf.char!=null&&CHARACTERS[conf.char]?CHARACTERS[conf.char].fig:makeHumanoid()), figArt:(conf.char!=null&&CHARACTERS[conf.char]&&CHARACTERS[conf.char].art?CHARACTERS[conf.char].art:null), blinkSeed:Math.random()*6.28,
+      wave:-1, fartGap:0, actPulse:0, hole:null, hand:null, hand2:null, cd2:null, pads:[], chainPts:null, chainLife:0,
+      flooded:false, hurtT:0, say:null, sayCd:2.5+Math.random()*3.5, charName:(conf.char!=null&&CHARACTERS[conf.char]?CHARACTERS[conf.char].name:null), fig:(conf.char!=null&&CHARACTERS[conf.char]?CHARACTERS[conf.char].fig:makeHumanoid()), figArt:(conf.char!=null&&CHARACTERS[conf.char]&&CHARACTERS[conf.char].art?CHARACTERS[conf.char].art:null), blinkSeed:Math.random()*6.28,
       boss:null, bossDead:false, dead:false, cleared:false,
       ultReady:true, ulted:false, ultT:0, ultFlash:0, ultBannerT:0, ultName:(conf.char!=null&&CHARACTERS[conf.char]?ULTS[CHARACTERS[conf.char].name]:'OVERDRIVE')}; }
   function reset(){ cancelAnimationFrame(raf); running=false; finished=false; winnerSide=null; elapsed=0; countdown=0; phase='survive'; alertT=0; callouts=[]; koMile=0; lastLead=null; ko=null;
@@ -442,11 +458,6 @@
         for(var jmp=0;jmp<jumps;jmp++){ var biC=-1,bddC=range; for(i=0;i<e.length;i++){var qx=e[i].x-last.x,qy=e[i].y-last.y,q=qx*qx+qy*qy;if(q<bddC){bddC=q;biC=i;}}
           if(biC>=0){pts.push({x:e[biC].x,y:e[biC].y});last=pts[pts.length-1];killAt(L,biC);} else break; }
         if(b){pts.push({x:b.x,y:b.y});dmgBoss(L,P.bossDmg);} if(pts.length>1){L.chainPts=pts;L.chainLife=16;L.chainMax=16;sFrog();L.actPulse=8;} L.cd=Math.max(24,P.cooldown/ramp);}
-      // AMPLIFY ult: each deployed lily pad is its own auto-firing tongue turret
-      if(L.ulted && L.pads.length){ var padR2=P.range*P.range*1.6;
-        for(var pp=0;pp<L.pads.length;pp++){ var pad=L.pads[pp]; if(pad.fire>0)pad.fire--; pad.cd--;
-          if(pad.cd<=0){ var bi2=-1,bd2=padR2; for(i=0;i<e.length;i++){ var qx2=e[i].x-pad.x,qy2=e[i].y-pad.y,q2=qx2*qx2+qy2*qy2; if(q2<bd2){bd2=q2;bi2=i;} }
-            if(bi2>=0){ pad.tgt={x:e[bi2].x,y:e[bi2].y}; pad.fire=6; killAt(L,bi2); sFrog(); pad.cd=Math.round(16+Math.random()*10); } else pad.cd=8; } } }
     }
     else if(L.ability==='FART'){
       // DUTCH OVEN ult: lingering gas mist that chips anything standing in it (damage over time)
@@ -523,12 +534,16 @@
   }
 
   function stepLane(L,ramp){ if(L.dead)return;
+    if(L.hurtT>0)L.hurtT--;
+    if(L.say){ L.say.life-=FIXED/1000; if(L.say.life<=0)L.say=null; }
+    L.sayCd-=FIXED/1000; if(L.sayCd<=0 && !L.say && countdown<=0){ popSay(L,'idle'); L.sayCd=3.5+Math.random()*4.5; }
     for(var fi=L.fx.length-1;fi>=0;fi--){ if(--L.fx[fi].life<=0)L.fx.splice(fi,1); }
     for(var fi=L.fx.length-1;fi>=0;fi--){ if(--L.fx[fi].life<=0)L.fx.splice(fi,1); }
     L.waveT-=FIXED/1000;
     if(L.waveT<=0 && L.enemies.length<160){ var waveN=Math.min(60,2+Math.floor(elapsed*0.50)), gap=Math.max(0.30,2.0-elapsed*0.024);
       for(var wn=0;wn<waveN;wn++) spawnEnemy(L); L.waveT=gap; }
     var spd=cfg.espd*0.62*(1+Math.max(0,elapsed-30)*0.018+Math.max(0,elapsed-65)*0.150);
+    if(L.flooded) spd*=0.5;  // AMPLIFY: enemies wade through Ribbit's flooded lane
     for(var i=L.enemies.length-1;i>=0;i--){ var en=L.enemies[i]; if(en.flash>0)en.flash--;
       var dx=L.cx-en.x,dy=L.hy-en.y,dist=Math.hypot(dx,dy)||1,ux=dx/dist,uy=dy/dist,sp2=spd*(en.sm||1),sway=Math.sin(elapsed*(en.sf||2)+(en.ph||0))*(en.sw||0.4);
       en.x+=ux*sp2-uy*sway; en.y+=uy*sp2+ux*sway;
@@ -536,7 +551,9 @@
       if(en.x<L.x0+16)en.x=L.x0+16; if(en.x>L.x0+L.w-16)en.x=L.x0+L.w-16; if(en.y<FIELD_TOP+40)en.y=FIELD_TOP+40;
       var blk=false,sks=L.skeletons; if(sks.length){ for(var sj=0;sj<sks.length;sj++){ var sk=sks[sj],bdx=sk.x-en.x,bdy=sk.y-en.y; if(bdx*bdx+bdy*bdy<400){ addFx(L,en.x,en.y,'x','#ff9a6b'); var nx2=en.x,ny2=en.y; L.enemies.splice(i,1); L.kills++; L.dmg++; sTick(); sk.hp--; if(sk.hp<=0)sks.splice(sj,1); blk=true; if(L.ulted&&L.ability==='SKELETON'&&Math.random()<0.25) raiseSkeleton(L,nx2,ny2); break; } } }
       if(blk) continue;
-      if(dist<L.r+en.r){ L.enemies.splice(i,1); L.hp-=(en.poop?cfg.poopDmg:(en.cub?cfg.edmg*5:(en.elite?cfg.edmg*4:cfg.edmg)))*(L.ulted?0.5:1); sThud(); } }
+      if(dist<L.r+en.r){ L.enemies.splice(i,1); L.hp-=(en.poop?cfg.poopDmg:(en.cub?cfg.edmg*5:(en.elite?cfg.edmg*4:cfg.edmg)))*(L.ulted?0.5:1); sThud();
+        L.hurtT=11; for(var hk=0;hk<5;hk++){ var ha=hk/5*6.283; addFx(L, L.cx+Math.cos(ha)*L.r*0.7, L.hy+Math.sin(ha)*L.r*0.7, (hk&1?'!':'x'), '#ff5b4a'); }
+        if(!L.say && Math.random()<0.4) popSay(L,'hurt',1.2); } }
     if(L.boss){ var B=L.boss; B.ph+=0.08; if(B.flash>0)B.flash-=0.08;
       B.drawX=B.x+Math.sin(B.ph)*L.w*0.12;
       if(B.kind==='bear'){
@@ -561,8 +578,9 @@
           for(var cl=0;cl<clones.length;cl++) L.pucks.push(clones[cl]); } }
       // NECROMANCY: raise an army at once (and from here on, slain enemies rise as skeletons)
       if(L.ability==='SKELETON'){ for(var na=0;na<18;na++) raiseSkeleton(L, L.x0+22+Math.random()*(L.w-44), L.hy-40-Math.random()*L.params.lineDist); }
-      // AMPLIFY: deploy a spread of lily pads, each an auto-firing tongue turret
-      if(L.ability==='FROG TONGUE'){ L.pads=[]; for(var lp=0;lp<5;lp++) L.pads.push({x:L.x0+50+Math.random()*(L.w-100), y:FIELD_TOP+170+Math.random()*(L.hy-FIELD_TOP-300), cd:Math.round(lp*5), fire:0, tgt:null}); }
+      // AMPLIFY: flood the whole lane — the hero rides a lily pad while enemies slog through the water
+      if(L.ability==='FROG TONGUE'){ L.flooded=true; for(var sp3=0;sp3<14;sp3++){ var sa3=sp3/14*6.283; addFx(L, L.cx+Math.cos(sa3)*90, L.hy+Math.sin(sa3)*60, '~', '#4fa9e0'); } }
+      popSay(L,'ult',1.8);
     }
     if(L.actPulse>0) L.actPulse--;
     if(L.ultFlash>0) L.ultFlash-=0.06;
@@ -574,6 +592,9 @@
   function laneClear(L){ return L.spawned>=L.toSpawn && L.enemies.length===0; }
   function mkBoss(L){ var BD=BOSSES[cfg.bossIdx]||BOSSES[0]; return {x:L.cx,y:FIELD_TOP+185,r:48,ph:0,flash:0,kind:BD.kind||null,roar:0,atkCd:Math.round(BEAR_GAP*0.6),invuln:true}; }
   function popCallout(txt,color){ callouts.push({txt:txt,color:color||'#ffd60a',life:1.5}); if(callouts.length>3)callouts.shift(); }
+  function popSay(L,kind,life){ if(!L.charName)return; var pack=QUIPS[L.charName]; if(!pack)return; var list=pack[kind]||pack.idle; if(!list||!list.length)return;
+    var idx=Math.floor((elapsed*7.13+L.cx*0.013+L.kills)% list.length); if(idx<0)idx+=list.length;
+    L.say={txt:list[idx], col:(kind==='hurt'?'#ff5b4a':(kind==='ult'?'#ffd60a':L.color)), life:life||1.6, kind:kind}; }
   function beginKO(loser,winner){ if(ko)return; ko={loser:loser,winner:winner,t:KO_DUR}; var Ll=loser==='A'?lanes[0]:lanes[1]; for(var k=0;k<20;k++){ var a=k/20*6.283; addFx(Ll, Ll.cx+Math.cos(a)*42, Ll.hy+Math.sin(a)*42, (k&1?'*':'x'), '#ff3b30'); } sKO(); }
   function simTick(){
     if(finished) return;
@@ -627,6 +648,11 @@
     ctx.fillStyle='rgba(255,255,255,0.015)'; ctx.fillRect(0,0,W/2,H);
     lanes.forEach(function(L){
       ctx.save(); ctx.beginPath(); ctx.rect(L.x0,0,L.w,H); ctx.clip();
+      // AMPLIFY flood water (under everything)
+      if(L.flooded){ var wt=elapsed; ctx.fillStyle='rgba(40,110,180,0.30)'; ctx.fillRect(L.x0,FIELD_TOP,L.w,H-FIELD_TOP);
+        ctx.strokeStyle='rgba(150,210,255,0.22)'; ctx.lineWidth=2;
+        for(var wr=0;wr<8;wr++){ var wy=FIELD_TOP+30+wr*((H-FIELD_TOP)/8); ctx.beginPath();
+          for(var wx=L.x0;wx<=L.x0+L.w;wx+=14){ var wyy=wy+Math.sin(wx*0.05+wt*2+wr)*4; if(wx===L.x0)ctx.moveTo(wx,wyy); else ctx.lineTo(wx,wyy); } ctx.stroke(); } }
       // blackhole
       if(L.hole){ var hx=L.hole.x,hy=L.hole.y; for(var s=0;s<3;s++){var rr2=18+s*9; ctx.beginPath(); ctx.arc(hx,hy,rr2,L.hole.ang+s,L.hole.ang+s+4.5); ctx.strokeStyle=L.color; ctx.globalAlpha=0.6-s*0.15; ctx.lineWidth=6; ctx.stroke();} ctx.globalAlpha=1; ctx.beginPath(); ctx.arc(hx,hy,16,0,Math.PI*2); ctx.fillStyle='#000'; ctx.fill(); ctx.strokeStyle=L.color; ctx.lineWidth=3; ctx.stroke(); }
       // fart cloud
@@ -638,9 +664,6 @@
           ctx.beginPath(); ctx.arc(px,py,rad*0.6,0,Math.PI*2); ctx.fillStyle='rgba(140,128,46,'+(0.16*fade)+')'; ctx.fill(); } }
       // lingering mist
       if(L.mist.length){ for(var mq=0;mq<L.mist.length;mq++){ var msp=L.mist[mq], mfade=Math.min(1,msp.life/150); ctx.beginPath(); ctx.arc(msp.x,msp.y,msp.r,0,Math.PI*2); ctx.fillStyle='rgba(140,180,60,'+(0.10*mfade)+')'; ctx.fill(); } }
-      // lily pads (AMPLIFY)
-      if(L.ability==='FROG TONGUE' && L.pads.length){ for(var pp=0;pp<L.pads.length;pp++){ var pad=L.pads[pp]; ctx.beginPath(); ctx.arc(pad.x,pad.y,22,0.45,Math.PI*2+0.45-0.9); ctx.lineTo(pad.x,pad.y); ctx.closePath(); ctx.fillStyle='#4e9e3f'; ctx.fill(); ctx.beginPath(); ctx.arc(pad.x,pad.y,10,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.fill();
-        if(pad.fire>0 && pad.tgt){ ctx.strokeStyle='#ff6fae'; ctx.lineWidth=6; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(pad.x,pad.y); ctx.lineTo(pad.tgt.x,pad.tgt.y); ctx.stroke(); } } }
       // enemies
       for(var i=0;i<L.enemies.length;i++){var e=L.enemies[i]; ctx.beginPath(); ctx.arc(e.x,e.y,e.r,0,Math.PI*2); ctx.fillStyle='#e8e8e8'; ctx.fill(); ctx.fillStyle='rgba(255,59,48,0.9)'; ctx.beginPath(); ctx.arc(e.x,e.y,e.r*0.5,0,Math.PI*2); ctx.fill();}
       // projectiles
@@ -669,8 +692,11 @@
         var bw=bs.r*2.2,bx=bs.x-bw/2,by=bs.y-bs.r-26; ctx.fillStyle='rgba(0,0,0,0.6)'; rr(bx-2,by-2,bw+4,16+4,4); ctx.fill();
         ctx.fillStyle=L.color; rr(bx,by,bw*Math.max(0,bs.hp)/bs.maxhp,16,3); ctx.fill();
       }
+      // lily pad under the hero (AMPLIFY)
+      if(L.flooded){ ctx.save(); ctx.beginPath(); ctx.ellipse(L.cx,L.hy+L.r*0.55,L.r*1.5,L.r*0.62,0,0.5,Math.PI*2+0.5-1.0); ctx.lineTo(L.cx,L.hy+L.r*0.55); ctx.closePath(); ctx.fillStyle='#3f8f3a'; ctx.fill(); ctx.strokeStyle='#2c6b29'; ctx.lineWidth=3; ctx.stroke(); ctx.restore(); }
       // hero
-      if(!L.dead){ctx.beginPath();ctx.arc(L.cx,L.hy,L.r,0,Math.PI*2);ctx.fillStyle=L.color;ctx.fill();ctx.lineWidth=6;ctx.strokeStyle='#fff';ctx.stroke();}
+      var hShakeF=(L.hurtT>0)?((Math.floor(elapsed*50)&1)?4:-4):0, hColF=(L.hurtT>0&&(Math.floor(L.hurtT/2)&1))?'#ff5b4a':L.color;
+      if(!L.dead){ctx.beginPath();ctx.arc(L.cx+hShakeF,L.hy,L.r,0,Math.PI*2);ctx.fillStyle=hColF;ctx.fill();ctx.lineWidth=6;ctx.strokeStyle='#fff';ctx.stroke();}
       else{ctx.save();ctx.globalAlpha=0.4;ctx.beginPath();ctx.arc(L.cx,L.hy,L.r,0,Math.PI*2);ctx.fillStyle='#444';ctx.fill();ctx.restore();ctx.font='800 34px "Inter",system-ui,sans-serif';ctx.fillStyle='#888';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('DOWN',L.cx,L.hy);}
       ctx.restore();
     });
@@ -748,6 +774,9 @@
     for(var li=0;li<lanes.length;li++){ var L=lanes[li],e=L.enemies,i,b=L.boss,P=L.params;
       if(li===0){ clipLo=0; clipHi=mid-1; } else { clipLo=mid; clipHi=cols-1; }
       drawEntrance(L);
+      // AMPLIFY flood: rippling water across the whole lane
+      if(L.flooded){ var wfr0=w2r(FIELD_TOP), wtn=elapsed, wgl=['~','-','='];
+        for(var wfr=wfr0;wfr<rows;wfr++)for(var wfc=clipLo;wfc<=clipHi;wfc++){ var wv=Math.sin(wfc*0.6+wfr*0.9+wtn*2.2); if(wv<0.45)continue; plot(wfc,wfr,wgl[(wfc+wfr)%3],(wv>0.82?'#6fbdf0':'#2f6fb0')); } }
       occ={}; e.sort(function(p,q){return q.y-p.y;});
       var ech=cfg.enemyChar||'&'; var bk0=(BOSSES[cfg.bossIdx]||{}).kind; if(bk0&&BENEMY[bk0]&&(cfg.enemyChar==='&'||!cfg.enemyChar)) ech=BENEMY[bk0];
       var eech=(bk0&&BELITE[bk0])?BELITE[bk0]:'\ud83d\udc79';
@@ -801,10 +830,6 @@
       if(L.hole){ var ang0=L.hole.ang; for(var sp=0;sp<28;sp++){ var rr3=5+sp*1.55, aa=ang0+sp*0.62, gx=L.hole.x+Math.cos(aa)*rr3, gy=L.hole.y+Math.sin(aa)*rr3; plot(w2c(gx),w2r(gy),(sp&1?'*':'@'),L.color); } plot(w2c(L.hole.x),w2r(L.hole.y),'@','#02040a'); }
       if(L.ability==='BEAM'&&!L.dead&&running){ var bca=Math.cos(L.beamAng),bsa=Math.sin(L.beamAng),bpx=-bsa,bpy=bca,boff=Math.max(cellW,cellH)*0.9; line(L.cx,L.hy,L.cx+bca*900,L.hy+bsa*900,'|',L.color); line(L.cx+bpx*boff,L.hy+bpy*boff,L.cx+bca*900+bpx*boff,L.hy+bsa*900+bpy*boff,':',L.color); line(L.cx-bpx*boff,L.hy-bpy*boff,L.cx+bca*900-bpx*boff,L.hy+bsa*900-bpy*boff,':',L.color); }
       if(L.ability==='ORBIT'&&!L.dead){var orbs=P.orbs,R=L.r+P.radius;for(var k=0;k<orbs;k++){var a=L.orbAng+k*(Math.PI*2/orbs);plot(w2c(L.cx+Math.cos(a)*R),w2r(L.hy+Math.sin(a)*R),'o',L.color);}}
-      if(L.ability==='FROG TONGUE' && L.pads.length){ var padCol='#5fb84a';
-        for(var pp=0;pp<L.pads.length;pp++){ var pad=L.pads[pp], prr=22, pc0=w2c(pad.x-prr),pc1=w2c(pad.x+prr),pr0=w2r(pad.y-prr),pr1=w2r(pad.y+prr);
-          for(var pry=pr0;pry<=pr1;pry++)for(var prx=pc0;prx<=pc1;prx++){ var ppx=prx*cellW+cellW/2,ppy=pry*cellH+cellH/2,pdd=Math.hypot(ppx-pad.x,ppy-pad.y); if(pdd>prr)continue; var pang=Math.atan2(ppy-pad.y,ppx-pad.x); if(pang>0.45&&pang<1.35)continue; /* notch */ plot(prx,pry,(pdd>prr*0.62?'o':':'),padCol); }
-          if(pad.fire>0 && pad.tgt){ line(pad.x,pad.y,pad.tgt.x,pad.tgt.y,'~','#ff6fae'); plot(w2c(pad.tgt.x),w2r(pad.tgt.y),'O','#ff6fae'); } } }
       if(L.chainPts&&L.chainLife>0){ var TC='#ff6fae', cp=L.chainPts, cm=L.chainMax||7, age=1-(L.chainLife/cm), reach=age<0.5?(age*2):Math.max(0,1-(age-0.5)*2);
         var segL=[],tot=0; for(var cs=1;cs<cp.length;cs++){ var dl=Math.hypot(cp[cs].x-cp[cs-1].x,cp[cs].y-cp[cs-1].y); segL.push(dl); tot+=dl; }
         var want=reach*tot, accL=0, tipx=cp[0].x, tipy=cp[0].y;
@@ -823,15 +848,20 @@
         ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='700 '+Math.ceil(cellH*0.58)+'px "JetBrains Mono",sans-serif'; ctx.fillText(BD.name, bX, b.y-cellH*3.2);
         ctx.font='700 '+Math.ceil(cellH*0.95)+'px "JetBrains Mono",monospace'; }
       { var fig=L.fig, t=elapsed, dead=L.dead;
+        // lily pad under the hero (AMPLIFY)
+        if(L.flooded && !dead){ var lpx=L.cx, lpy=L.hy+cellH*1.2, lpr=L.r*1.2, lc0=w2c(lpx-lpr),lc1=w2c(lpx+lpr),lr0=w2r(lpy-lpr*0.6),lr1=w2r(lpy+lpr*0.6);
+          for(var lpry=lr0;lpry<=lr1;lpry++)for(var lprx=lc0;lprx<=lc1;lprx++){ var lppx=lprx*cellW+cellW/2,lppy=lpry*cellH+cellH/2,lddx=(lppx-lpx)/lpr,lddy=(lppy-lpy)/(lpr*0.6),lq=lddx*lddx+lddy*lddy; if(lq>1)continue; var lang2=Math.atan2(lppy-lpy,lppx-lpx); if(lang2>0.55&&lang2<1.2)continue; plot(lprx,lpry,(lq>0.5?'o':':'),(lq>0.5?'#2c6b29':'#3f8f3a')); } }
         var bob=dead?0:((Math.sin(t*1.5+L.blinkSeed)>0.2)?-1:0);
+        var hurtOn=!dead&&L.hurtT>0, hshk=hurtOn?((Math.floor(t*50)&1)?2:-2):0;
         var fcl=dead?'#6a6f78':(L.ulted?'#ffffff':L.color);
+        if(hurtOn) fcl=(Math.floor(L.hurtT/2)&1)?'#ff5b4a':'#ffd0c8';
         if(L.ulted){ var aR=L.r+26+Math.sin(elapsed*9)*9; for(var av=0;av<11;av++){ var aa=av/11*6.283+elapsed*3.2; plot(w2c(L.cx+Math.cos(aa)*aR), w2r(L.hy+Math.sin(aa)*aR), (av&1?'*':'+'), L.color); } }
         if(L.figArt){ var art=L.figArt, abx=L.ability;
           var actingA=!dead&&(L.actPulse>0 || abx==='ORBIT' || abx==='BEAM' || (abx==='BLACKHOLE'&&L.hole));
           var frames=dead?(art.dead||art.idle):((actingA&&art.act)?art.act:art.idle);
           var shk=actingA?((Math.floor(t*38)&1)?1:-1):0;
           var hop=(actingA&&!dead)?-1:0;
-          var base=w2c(L.cx)-Math.floor(art.w/2)+shk, arow=w2r(L.hy)-(frames.length-2)+bob+hop;
+          var base=w2c(L.cx)-Math.floor(art.w/2)+shk+hshk, arow=w2r(L.hy)-(frames.length-2)+bob+hop;
           for(var ar=0;ar<frames.length;ar++){ var rs=frames[ar]; for(var fc=0;fc<rs.length;fc++){ var chh=rs.charAt(fc); if(chh!==' ') plot(base+fc, arow+ar, chh, fcl); } } }
         else { var legi=dead?0:(Math.floor(t*2)+li)%2, armi=dead?0:(Math.floor(t*1.4)+li)%2;
           var bt=(t*0.9+L.blinkSeed)%3.2, blink=!dead&&bt<0.14;
@@ -851,7 +881,7 @@
             else if(ab==='SKELETON'){ eyes='O O'; arm=['\\','/']; dip=-1; }
             else if(ab==='ORBIT'){ eyes='- -'; arm=(Math.floor(t*16)&1)?['/','\\']:['\\','/']; } }
           var rows=[ fig.hat, '['+eyes+']', arm[0]+fig.body+arm[1], leg ];
-          var fcol=w2c(L.cx)-2+shake, frow=w2r(L.hy)-2+bob+dip;
+          var fcol=w2c(L.cx)-2+shake+hshk, frow=w2r(L.hy)-2+bob+dip;
           for(var fr2=0;fr2<4;fr2++){ var rs2=rows[fr2]; for(var fc2=0;fc2<rs2.length;fc2++){ var chh2=rs2.charAt(fc2); if(chh2!==' ') plot(fcol+fc2, frow+fr2, chh2, fcl); } } } }
     }
   }
@@ -903,6 +933,13 @@
         var tag=Lw.hp<Lw.maxhp*0.2?'CLUTCH':(Lw.hp>Lw.maxhp*0.8?'FLAWLESS':null); if(tag) gtext(W/2,H*0.67,tag,Lw.hp<Lw.maxhp*0.2?'#ff5b4a':'#46e2a0',1.3); }
       else bigText(W/2,H*0.46,'DRAW','#ffffff',2); }
   }
+  function drawSay(L){ if(!L.say||L.say.life<=0||L.dead||finished||countdown>0)return; var s=L.say, a=Math.max(0,Math.min(1,s.life*2.2));
+    ctx.save(); ctx.globalAlpha=a; ctx.font='800 30px "Inter",system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    var tw=ctx.measureText(s.txt).width, bw=tw+34, bh=46, bx=L.cx, by=L.hy-L.r-76;
+    if(bx-bw/2<L.x0+10) bx=L.x0+10+bw/2; if(bx+bw/2>L.x0+L.w-10) bx=L.x0+L.w-10-bw/2;
+    ctx.fillStyle='rgba(8,10,12,0.88)'; rr(bx-bw/2,by-bh/2,bw,bh,12); ctx.fill(); ctx.lineWidth=3; ctx.strokeStyle=s.col||L.color; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(L.cx-9,by+bh/2-2); ctx.lineTo(L.cx,by+bh/2+14); ctx.lineTo(L.cx+9,by+bh/2-2); ctx.closePath(); ctx.fillStyle='rgba(8,10,12,0.88)'; ctx.fill();
+    ctx.fillStyle=s.col||'#ffffff'; ctx.fillText(s.txt,bx,by); ctx.restore(); }
   function draw(){
     if(asciiMode){ var cols=asciiCols, cellW=W/cols, cellH=cellW/0.55, rows=Math.max(1,Math.floor(H/cellH));
       ensureGrid(cols,rows,cellW,cellH);
@@ -910,6 +947,7 @@
       asciiGrid(cols,rows,cellW,cellH);
       asciiHUD(cols,cellW,cellH);
     } else { drawField(); drawHUD(); }
+    if(lanes&&lanes.length){ for(var di=0;di<lanes.length;di++) drawSay(lanes[di]); }
   }
 
   /* ============ RECORDING ============ */
