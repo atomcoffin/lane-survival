@@ -7,7 +7,7 @@
    Leave a list empty ([]) to keep the built-in default for that slot. */
 window.LS_CHARACTERS = window.LS_CHARACTERS || {};
 window.LS_CHARACTERS.RIBBIT = {
-  name: "RIBBIT",
+  name: "LICKY RICKY",
   idle: ["ribbit ribbit", "hop hop", "catch flies", "so fly", "lily good"],
   hurt: ["croak!", "ow, my legs", "not toad-ally cool"],
   ult:  ["FLOOD TIME!", "make it rain", "pond's mine now"]

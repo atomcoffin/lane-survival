@@ -7,7 +7,7 @@
    Leave a list empty ([]) to keep the built-in default for that slot. */
 window.LS_CHARACTERS = window.LS_CHARACTERS || {};
 window.LS_CHARACTERS.CATTYWUMPUS = {
-  name: "CATTYWUMPUS",
+  name: "CATHYWUMPUS",
   idle: ["mrow", "knock it off", "zoomies!", "purr...", "mine now", "play with me"],
   hurt: ["HISSS", "ssst!", "you'll pay", "mrrrow!"],
   ult:  ["FERAL FRENZY!", "NO MORE NICE CAT", "i'll scratch you"]
