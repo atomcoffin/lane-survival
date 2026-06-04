@@ -488,12 +488,17 @@
     }
 
     else if(L.ability==='SLAP'){ L.cd-=1;
-      if(L.cd<=0){ var hx=L.cx, hy2;
-        if(b){ hy2=b.y; } else if(e.length){ var sy=0; for(i=0;i<e.length;i++) sy+=e[i].y; hy2=sy/e.length; } else { hy2=(FIELD_TOP+L.hy)/2; }
-        var pw=P.palmW, ph=pw*0.62;
+      if(L.cd<=0){ var pw=P.palmW, ph=pw*0.62, hx=L.cx, hy2=(FIELD_TOP+L.hy)/2;
+        // slam the nearest threat
+        if(e.length){ var bi=-1,bd=1e9; for(i=0;i<e.length;i++){ var dxn=e[i].x-L.cx,dyn=e[i].y-L.hy,dn=dxn*dxn+dyn*dyn; if(dn<bd){bd=dn;bi=i;} } hx=e[bi].x; hy2=e[bi].y; }
+        hx=Math.max(L.x0+pw*0.6,Math.min(L.x0+L.w-pw*0.6,hx));
         for(i=e.length-1;i>=0;i--){ var ens=e[i]; if(Math.abs(ens.x-hx)<pw && Math.abs(ens.y-hy2)<ph) killAt(L,i); }
+        // shove survivors away from the impact
+        for(i=L.enemies.length-1;i>=0;i--){ var esh=L.enemies[i],sdx=esh.x-hx,sdy=esh.y-hy2,sdd=Math.hypot(sdx,sdy)||1; if(sdd<pw*2.2){ var fpush=(1-sdd/(pw*2.2))*pw*0.85; esh.x+=sdx/sdd*fpush; esh.y+=sdy/sdd*fpush;
+          if(esh.x<L.x0+16)esh.x=L.x0+16; if(esh.x>L.x0+L.w-16)esh.x=L.x0+L.w-16; if(esh.y<FIELD_TOP+40)esh.y=FIELD_TOP+40; } }
         if(b && Math.abs(b.x-hx)<pw+b.r && Math.abs(b.y-hy2)<ph+b.r) dmgBoss(L,P.bossDmg);
-        for(var hf=0;hf<16;hf++) addFx(L, hx+(Math.random()-0.5)*pw*1.7, hy2+(Math.random()-0.5)*ph*1.5, (hf&1?'*':'x'), '#ffffff');
+        for(var hd=0;hd<12;hd++) addFx(L, hx+(Math.random()-0.5)*pw*2.0, hy2+ph*0.5+(Math.random()-0.5)*ph*0.5, (hd&1?'o':'.'), '#c9bfa3'); // dust kicked along the ground
+        for(var hf=0;hf<6;hf++) addFx(L, hx+(Math.random()-0.5)*pw, hy2+(Math.random()-0.5)*ph, (hf&1?'*':'x'), '#ffffff'); // impact sparks
         L.hand={x:hx,y:hy2,t:18}; sZap('SLAP'); L.actPulse=12; L.cd=Math.max(20,P.cooldown/ramp); }
       if(L.hand){ L.hand.t--; if(L.hand.t<=0)L.hand=null; }
     }
@@ -739,9 +744,14 @@
       for(var ksr=0;ksr<L.skeletons.length;ksr++){ var skk=L.skeletons[ksr],skc=w2c(skk.x),skr=w2r(skk.y); plot(skc,skr,'A','#ece8d6'); plot(skc,skr-1,'o','#ece8d6'); }
       for(i=0;i<L.fx.length;i++){ var fxp=L.fx[i],fg=fxp.life>4?fxp.ch:(fxp.life>2?'*':'.'); plot(w2c(fxp.x),w2r(fxp.y),fg,fxp.col); }
       if(L.ability==='SLAP' && L.hand){ var H2=L.hand, pw=P.palmW, yoff=(H2.t>13)?(H2.t-13)*12:0;
-        var hx=H2.x, hyy=H2.y-yoff, ph=pw*0.62, hc0=w2c(hx-pw), hc1=w2c(hx+pw), hr0=w2r(hyy-ph), hr1=w2r(hyy+ph), midR=Math.round(hr0+(hr1-hr0)*0.42);
-        for(var hrr=midR;hrr<=hr1;hrr++) for(var hcc=hc0;hcc<=hc1;hcc++) plot(hcc,hrr,'#',L.color);
-        var hspan=hc1-hc0; for(var hfk=0;hfk<5;hfk++){ var hfx2=hc0+Math.round(hspan*hfk/4); for(var hrr2=hr0;hrr2<midR;hrr2++) plot(hfx2,hrr2,'#',L.color); } }
+        var hx=H2.x, hyy=H2.y-yoff, ph=pw*0.62, hc0=w2c(hx-pw), hc1=w2c(hx+pw), hr0=w2r(hyy-ph), hr1=w2r(hyy+ph), hspan=hc1-hc0, midR=Math.round(hr0+(hr1-hr0)*0.52);
+        // palm (upper), tapering toward the wrist at the top
+        for(var hrr=hr0;hrr<=midR;hrr++){ var tp=(midR-hrr)/Math.max(1,(midR-hr0)), inset=Math.round(tp*hspan*0.20); for(var hcc=hc0+inset;hcc<=hc1-inset;hcc++) plot(hcc,hrr,'#',L.color); }
+        // four splayed fingers (lower), varied length with the middle longest
+        var fcols=[0.15,0.38,0.62,0.85], flen=[0.60,1.0,0.86,0.52];
+        for(var ff=0;ff<4;ff++){ var fx=hc0+Math.round(hspan*fcols[ff]), fbot=midR+Math.round((hr1-midR)*flen[ff]); for(var fr=midR;fr<=fbot;fr++) plot(fx,fr,'#',L.color); }
+        // thumb stub off the side, mirrored per lane
+        var thR=hr0+Math.round((midR-hr0)*0.55); if(li===0){ for(var tk=0;tk<4;tk++) plot(hc1+tk, thR+tk, '#', L.color); } else { for(var tk=0;tk<4;tk++) plot(hc0-tk, thR+tk, '#', L.color); } }
       if(L.ability==='FART'&&L.wave>0&&!L.dead){ var rad=L.wave, band=P.thickness, maxR=L.w*1.1;
         var gl=['s','o','O','c','~','.',':','o'], tnow=Math.floor(elapsed*10);
         // dense gas puff clinging to the source (the butt) so it reads as emanating from the hero
