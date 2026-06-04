@@ -722,17 +722,16 @@
   /* ============ RENDER ============ */
   function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
   function header(L){ var cx=L.cx; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.font='800 54px "Inter",system-ui,sans-serif'; ctx.lineWidth=9; ctx.strokeStyle='#000'; ctx.fillStyle=L.color;
-    ctx.strokeText(L.name,cx,150); ctx.fillText(L.name,cx,150);
-    ctx.font='700 28px "Inter",system-ui,sans-serif'; ctx.fillStyle='#fff'; ctx.lineWidth=5; ctx.strokeStyle='rgba(0,0,0,0.55)';
-    var st=L.kills+' KILLS   ·   '+Math.round(L.dmg)+' DMG'; ctx.strokeText(st,cx,244); ctx.fillText(st,cx,244); }
+    ctx.font='800 48px "Inter",system-ui,sans-serif'; ctx.lineWidth=9; ctx.strokeStyle='#000'; ctx.fillStyle=L.color;
+    ctx.strokeText(L.name,cx,205); ctx.fillText(L.name,cx,205);
+    ctx.font='700 26px "Inter",system-ui,sans-serif'; ctx.fillStyle='#fff'; ctx.lineWidth=5; ctx.strokeStyle='rgba(0,0,0,0.55)';
+    var st=L.kills+' KILLS'; ctx.strokeText(st,cx,253); ctx.fillText(st,cx,253); }
   function bottomStats(L){ var cx=L.cx; ctx.textAlign='center'; ctx.textBaseline='middle';
+    // HP lives in the top safe band (was at the bottom edge, behind TikTok's caption/nav)
     var segs=14, fr=Math.max(0,L.hp)/L.maxhp, fl=Math.round(fr*segs), bar='';
     for(var s=0;s<segs;s++) bar+=(s<fl?'#':'-');
-    ctx.font='600 30px "JetBrains Mono",monospace'; ctx.lineWidth=6; ctx.strokeStyle='rgba(0,0,0,0.55)'; ctx.fillStyle=L.color;
-    ctx.strokeText(bar,cx,H-110); ctx.fillText(bar,cx,H-110);
-    ctx.font='500 22px "JetBrains Mono",monospace'; ctx.fillStyle='rgba(255,255,255,0.55)'; ctx.lineWidth=4;
-    var hpln='HP '+Math.max(0,Math.ceil(L.hp))+' / '+L.maxhp; ctx.strokeText(hpln,cx,H-72); ctx.fillText(hpln,cx,H-72); }
+    ctx.font='600 26px "JetBrains Mono",monospace'; ctx.lineWidth=6; ctx.strokeStyle='rgba(0,0,0,0.55)'; ctx.fillStyle=L.color;
+    ctx.strokeText(bar,cx,292); ctx.fillText(bar,cx,292); }
   function drawField(){
     ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
     ctx.fillStyle='rgba(255,255,255,0.015)'; ctx.fillRect(0,0,W/2,H);
@@ -802,11 +801,11 @@
     ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(W/2,TOPBAR); ctx.lineTo(W/2,H); ctx.stroke();
     ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(0,TOPBAR); ctx.lineTo(W,TOPBAR); ctx.stroke();
     ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.font='800 58px "Inter",system-ui,sans-serif'; ctx.lineWidth=9; ctx.strokeStyle='#000'; ctx.fillStyle='#fff';
-    ctx.strokeText('WHO SURVIVES?',W/2,56); ctx.fillText('WHO SURVIVES?',W/2,56);
-    ctx.font='800 42px "Inter",system-ui,sans-serif'; ctx.fillStyle='#ffd60a'; ctx.strokeText('VS',W/2,150); ctx.fillText('VS',W/2,150);
+    ctx.font='800 50px "Inter",system-ui,sans-serif'; ctx.lineWidth=9; ctx.strokeStyle='#000'; ctx.fillStyle='#fff';
+    ctx.strokeText('WHO SURVIVES?',W/2,150); ctx.fillText('WHO SURVIVES?',W/2,150);
+    ctx.font='800 38px "Inter",system-ui,sans-serif'; ctx.fillStyle='#ffd60a'; ctx.strokeText('VS',W/2,205); ctx.fillText('VS',W/2,205);
     lanes.forEach(function(L){ ctx.save(); ctx.beginPath(); ctx.rect(L.x0,0,L.w,H); ctx.clip(); header(L); bottomStats(L); ctx.restore(); });
-    ctx.font='500 26px "JetBrains Mono",monospace'; ctx.textAlign='center'; ctx.fillStyle='rgba(159,230,160,0.6)'; ctx.textBaseline='middle'; ctx.fillText(elapsed.toFixed(1)+'s',W/2,244);
+    ctx.font='500 24px "JetBrains Mono",monospace'; ctx.textAlign='center'; ctx.fillStyle='rgba(159,230,160,0.6)'; ctx.textBaseline='middle'; ctx.fillText(elapsed.toFixed(1)+'s',W/2,292);
     if(phase==='alert'){ var aon=Math.floor(elapsed*6)%2===0; ctx.fillStyle='rgba(255,60,50,'+(aon?0.16:0.06)+')'; ctx.fillRect(0,0,W,H);
       if(aon){ ctx.font='800 90px "Inter",system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=14; ctx.strokeStyle='#000'; ctx.fillStyle='#ff5b4a';
         ctx.strokeText('!! BOSS ALERT !!',W/2,H*0.46); ctx.fillText('!! BOSS ALERT !!',W/2,H*0.46); } }
@@ -1008,16 +1007,17 @@
     // center divider, drawn as grid chars
     ctx.fillStyle='rgba(159,230,160,0.12)'; ctx.font='700 '+Math.ceil(cellH*0.95)+'px "JetBrains Mono",monospace';
     for(var yy=300; yy<H-150; yy+=cellH){ ctx.fillText('|', W/2, yy+cellH/2); }
-    gtext(W/2, 58, 'WHO SURVIVES?', '#ffffff', 1.7);
-    gtext(W/2, 150, 'VS', '#46e2a0', 1.7);
-    gtext(W/2, 292, elapsed.toFixed(1)+'s', 'rgba(159,230,160,0.5)', 0.85);
+    // Scoreboard kept inside TikTok's safe band: below the top tabs (~140px), and entirely above the
+    // bottom caption/nav. name + kills + HP all live up top; nothing critical sits at the bottom edge.
+    gtext(W/2, 150, 'WHO SURVIVES?', '#ffffff', 1.35);
+    gtext(W/2, 205, 'VS', '#46e2a0', 1.2);
+    gtext(W/2, 292, elapsed.toFixed(1)+'s', 'rgba(159,230,160,0.5)', 0.7);
     for(var li=0;li<lanes.length;li++){ var L=lanes[li], cx=L.cx, col=L.dead?'#6a6f78':L.color;
-      gtext(cx,150,L.name,col,1.7);
-      gtext(cx,238,String(L.kills),'#ffd60a',1.75); gtext(cx,274,'KILLS','rgba(255,214,10,0.6)',0.62);
+      gtext(cx,205,L.name,col,1.5);
+      gtext(cx,253,String(L.kills)+' KILLS','#ffd60a',1.2);
       var segs=14, fr=Math.max(0,L.hp)/L.maxhp, fl=Math.round(fr*segs), bar='';
       for(var s=0;s<segs;s++) bar+=(s<fl?'\u2588':'\u2591');
-      gtext(cx, L.hy+66, bar, col, 1.05);
-      gtext(cx, L.hy+96, 'HP '+Math.max(0,Math.ceil(L.hp)), 'rgba(255,255,255,0.5)', 0.72);
+      gtext(cx, 292, bar, col, 0.85);
     }
     for(var ul=0;ul<lanes.length;ul++){ var Lu=lanes[ul];
       if(Lu.ultFlash>0){ ctx.save(); ctx.globalAlpha=Lu.ultFlash*0.34; ctx.fillStyle=Lu.color; ctx.fillRect(Lu.x0,0,Lu.w,H); ctx.restore(); }
