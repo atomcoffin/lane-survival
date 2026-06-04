@@ -139,6 +139,11 @@
       <label class="toggle"><input type="checkbox" id="autorec" checked> Record on start, stop on winner</label>
       <label class="toggle"><input type="checkbox" id="ascii" checked> ASCII render</label>
       <div class="ctrl"><div class="row"><span>ASCII detail</span><b id="v-cols">64</b></div><input type="range" id="cols" min="32" max="160" step="4" value="64"></div>
+      <div class="frow"><span class="lbl">Capture quality</span><select id="capq">
+        <option value="1">1× · 1080p (fastest)</option>
+        <option value="2" selected>2× · 2160p (sharper)</option>
+        <option value="3">3× · 3240p (max, heavy)</option>
+      </select></div>
     </details>
     <details class="acc"><summary>Custom SFX · upload your own sounds</summary>
       <div class="frow"><span class="lbl">Attack</span><input type="file" accept="audio/*" id="sfx-zap"><b id="sfxl-zap"></b></div>
@@ -173,7 +178,14 @@
 <script>
 (function(){
   "use strict";
-  var cv=document.getElementById('cv'), ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d'), W=1080, H=1920;
+  // Capture scale: the canvas keeps 1080x1920 logical coords but renders into a larger backing
+  // store (e.g. 2x = 2160x3840). captureStream() records that backing store, so the exported clip
+  // is higher-resolution — sharper after TikTok re-encodes. Layout is untouched (all coords stay logical).
+  var CAPSCALE=2;
+  function applyCaptureScale(){ cv.width=Math.round(W*CAPSCALE); cv.height=Math.round(H*CAPSCALE);
+    ctx.setTransform(CAPSCALE,0,0,CAPSCALE,0,0); ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high'; }
+  applyCaptureScale();
   var PAL=['#ff3b30','#0a84ff','#30d158','#ffd60a','#ff9f0a','#bf5af2'];
   var ABILITIES=['ORBIT','NUKE','BEAM','SHOTGUN','SNIPER','FROG TONGUE','FART','BLACKHOLE','MINIGUN','PUCK','SKELETON','SLAP','YARN'];
   // per-ability tunable parameters: {k:key, l:label, min, max, step, def}
@@ -326,6 +338,7 @@
   document.getElementById('autorec').addEventListener('change',function(e){cfg.autorec=e.target.checked;});
   document.getElementById('ascii').addEventListener('change',function(e){asciiMode=e.target.checked; if(!running)draw();});
   (function(){var c=document.getElementById('cols');c.addEventListener('input',function(){asciiCols=parseInt(c.value,10);document.getElementById('v-cols').textContent=asciiCols; if(!running)draw();});})();
+  (function(){var q=document.getElementById('capq'); if(!q)return; q.value=String(CAPSCALE); q.addEventListener('change',function(){ if(rec&&rec.state==='recording'){ q.value=String(CAPSCALE); setStatus('Stop recording before changing quality'); return; } CAPSCALE=parseInt(q.value,10)||1; applyCaptureScale(); draw(); });})();
 
   /* ============ SETUP ============ */
   function pick(a){ return a[(Math.random()*a.length)|0]; }
@@ -1031,7 +1044,7 @@
     ensureAudio();
     try{ var stream=cv.captureStream(60);
       if(recDest&&recDest.stream.getAudioTracks().length){ recDest.stream.getAudioTracks().forEach(function(tr){stream.addTrack(tr);}); }
-      var m=pickMime(); rec=new MediaRecorder(stream,m?{mimeType:m,videoBitsPerSecond:9000000}:undefined); chunks=[];
+      var m=pickMime(), vbr=Math.round(11000000*CAPSCALE); rec=new MediaRecorder(stream,m?{mimeType:m,videoBitsPerSecond:vbr}:undefined); chunks=[];
       rec.ondataavailable=function(e){if(e.data&&e.data.size)chunks.push(e.data);};
       rec.onstop=function(){var b=new Blob(chunks,{type:'video/webm'}),u=URL.createObjectURL(b),dl=document.getElementById('dl');dl.href=u;dl.style.display='block';document.getElementById('rec').classList.remove('on');setStatus('CLIP READY \u00b7 '+(b.size/1048576).toFixed(1)+' MB');};
       rec.start(); document.getElementById('rec').classList.add('on'); setStatus('RECORDING\u2026');
