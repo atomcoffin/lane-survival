@@ -162,19 +162,19 @@
 
 <!-- Editable character overrides — names & dialogue. Edit any file in characters/ and refresh.
      Each file registers into window.LS_CHARACTERS; missing/broken files just fall back to built-in defaults. -->
-<script src="characters/gasbag.js"></script>
-<script src="characters/ribbit.js"></script>
-<script src="characters/void.js"></script>
-<script src="characters/buzzsaw.js"></script>
-<script src="characters/deadeye.js"></script>
-<script src="characters/kaboom.js"></script>
-<script src="characters/spray.js"></script>
-<script src="characters/ratatat.js"></script>
-<script src="characters/bones.js"></script>
-<script src="characters/pucker.js"></script>
-<script src="characters/lazer.js"></script>
-<script src="characters/smacko.js"></script>
-<script src="characters/cattywumpus.js"></script>
+<script src="characters/gasbag.js?v=2"></script>
+<script src="characters/ribbit.js?v=2"></script>
+<script src="characters/void.js?v=2"></script>
+<script src="characters/buzzsaw.js?v=2"></script>
+<script src="characters/deadeye.js?v=2"></script>
+<script src="characters/kaboom.js?v=2"></script>
+<script src="characters/spray.js?v=2"></script>
+<script src="characters/ratatat.js?v=2"></script>
+<script src="characters/bones.js?v=2"></script>
+<script src="characters/pucker.js?v=2"></script>
+<script src="characters/lazer.js?v=2"></script>
+<script src="characters/smacko.js?v=2"></script>
+<script src="characters/cattywumpus.js?v=2"></script>
 
 <script>
 (function(){
@@ -211,7 +211,7 @@
   var TOPBAR=300, FIELD_TOP=TOPBAR+10;
 
   var cfg={ A:{name:'GASBAG',color:'#5fc23f',ability:'FART',hp:7600,char:0,params:{}},
-            B:{name:'RIBBIT',color:'#46e2a0',ability:'FROG TONGUE',hp:7600,char:1,params:{}},
+            B:{name:'LICKY RICKY',color:'#46e2a0',ability:'FROG TONGUE',hp:7600,char:1,params:{}},
             count:700, espd:3.5, edmg:13, bossHp:8500, cap:30, enemyChar:'&', bossIdx:0, poopGap:24, poopDmg:55, sound:true, pick:true, autorec:true };
   var lanes=[], running=false, finished=false, winnerSide=null, t0=0, elapsed=0, raf=null, countdown=0;
   var ko=null, KO_DUR=1.6, SFX={};
@@ -374,7 +374,7 @@
   function cfig(h,e,bd,a0,a1,l0,l1){ return {hat:h,eyes:e,body:bd,arms:[a0,a1],legs:[l0,l1]}; }
   var CHARACTERS=[
     {name:'GASBAG',  ability:'FART',        color:'#5fc23f', fig:cfig('     ','o o','(O)',['~','~'],['-','-'],' J L ',' L J ')},
-    {name:'RIBBIT',  ability:'FROG TONGUE', color:'#46e2a0', fig:cfig('     ','O O','(=)',['<','>'],['/','\\'],' \\ / ',' / \\ ')},
+    {name:'LICKY RICKY', key:'RIBBIT', ability:'FROG TONGUE', color:'#46e2a0', fig:cfig('     ','O O','(=)',['<','>'],['/','\\'],' \\ / ',' / \\ ')},
     {name:'VOID',    ability:'BLACKHOLE',   color:'#bf5af2', fig:cfig(' /^\\ ','@ @','|0|',['\\','/'],['/','\\'],' | | ',' /\\  ')},
     {name:'BUZZSAW', ability:'ORBIT',       color:'#ff9f0a', fig:cfig(' === ','> <','[#]',['<','>'],['L','J'],' /\\  ',' L J ')},
     {name:'DEADEYE', ability:'SNIPER',      color:'#ff3b30', fig:cfig(' .-. ','- -','|X|',['|','|'],['/','\\'],' | | ',' d b ')},
@@ -385,7 +385,7 @@
     {name:'PUCKER',  ability:'PUCK',        color:'#ff6fae', fig:cfig(' .-. ','o o','(8)',['(',')'],[')','('],' J L ',' L J ')},
     {name:'LAZER',   ability:'BEAM',        color:'#ff5af2', fig:cfig(' /^\\ ','= =','{W}',['-','-'],['~','~'],' | | ',' /\\  ')},
     {name:'SMACKO',  ability:'SLAP',        color:'#f0b98a', fig:cfig('     ','o o','(P)',['\\','/'],['/','\\'],' J L ',' L J ')},
-    {name:'CATTYWUMPUS', ability:'YARN',    color:'#f4a64d', fig:cfig('/\\_/\\','^.^','(=)',['<','>'],['/','\\'],' J L ',' L J ')}
+    {name:'CATHYWUMPUS', key:'CATTYWUMPUS', ability:'YARN', color:'#f4a64d', fig:cfig('/\\_/\\','^.^','(=)',['<','>'],['/','\\'],' J L ',' L J ')}
   ];
   var ULTS={GASBAG:'DUTCH OVEN',RIBBIT:'AMPLIFY',VOID:'EVENT HORIZON',BUZZSAW:'OVERCLOCK',DEADEYE:'BULLET TIME',KABOOM:'FALLOUT',SPRAY:'FULL CHOKE',RATATAT:'SPIN UP',BONES:'NECROMANCY',PUCKER:'MULTIBALL',LAZER:'OVERLOAD',SMACKO:'MEGA SMACK',CATTYWUMPUS:'FERAL FRENZY'};
   // per-character one-liners that pop above the hero; {idle} chatter, {hurt} when struck, {ult} on ultimate
@@ -424,7 +424,7 @@
   // Each character keeps a stable `key` (its original id) used to look up sprite art, ult
   // banner, and default dialogue — so the editable display `name` can be changed freely.
   for(var _ci=0;_ci<CHARACTERS.length;_ci++){ var _C=CHARACTERS[_ci];
-    _C.key=_C.name; _C.art=SPRITES[_C.key]||null;
+    _C.key=_C.key||_C.name; _C.art=SPRITES[_C.key]||null;  // explicit key lets display `name` differ from the sprite/ult/quip id
     var _dq=QUIPS[_C.key]||{idle:[],hurt:[],ult:[]}; _C.quips={idle:_dq.idle||[],hurt:_dq.hurt||[],ult:_dq.ult||[]}; }
   // Apply external overrides from characters/*.js (window.LS_CHARACTERS), if those files loaded.
   // Each entry is keyed by the character's id and may set a new display name and/or dialogue lists.
