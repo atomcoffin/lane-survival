@@ -399,6 +399,7 @@
   };
   var ULT_THRESH=0.10;
   var BEAR_GAP=270, ROAR_DUR=72, SURV_CAP=160, HOOK_DUR=2.6;  // cold-open hook overlay duration (s)
+  var SLAM_DUR=0.5;  // name slam-in animation duration (s); lane B is staggered slightly after A
   var GRUDGE_GAP=220, THROW_DUR=20, GRUDGE_DOT=12, GRUDGE_DOT_SECS=7;  // VHS tape: dmg/sec for 7s
   var SPRITES={
     "GASBAG":{w:6,idle:["(o..O)", "(_vv_)", "/|  |\\", " J  L "],act:["(>..<)", "(OvvO)", "\\|  |/", "~J  L~"]},
@@ -755,9 +756,19 @@
 
   /* ============ RENDER ============ */
   function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+  // name slam-in: at match start each lane's name punches in big and drops to size with a little
+  // overshoot (lane B staggered after A). mode 'pre' = not on yet, 'slam' = animating, 'done' = settled.
+  function nameSlam(li){ var st=elapsed-li*0.12;
+    if(!running||finished||st>=SLAM_DUR) return {mode:'done'};
+    if(st<0) return {mode:'pre'};
+    var p=st/SLAM_DUR, ease=1-Math.pow(1-p,3);
+    return {mode:'slam', mult:Math.max(0.25, 2.6+(1-2.6)*ease + Math.sin(p*6.283)*Math.max(0,1-p)*0.14), dy:-58*(1-ease), alpha:Math.min(1,p*10), white:p<0.14}; }
   function header(L){ var cx=L.cx; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.font='800 48px "Inter",system-ui,sans-serif'; ctx.lineWidth=9; ctx.strokeStyle='#000'; ctx.fillStyle=L.color;
-    ctx.strokeText(L.name,cx,205); ctx.fillText(L.name,cx,205);
+    var sm=nameSlam(L.side==='A'?0:1);
+    if(sm.mode!=='pre'){ ctx.save(); var nsz=Math.round(48*(sm.mode==='slam'?sm.mult:1)), ny=205+(sm.mode==='slam'?sm.dy:0);
+      if(sm.mode==='slam')ctx.globalAlpha=sm.alpha;
+      ctx.font='800 '+nsz+'px "Inter",system-ui,sans-serif'; ctx.lineWidth=9; ctx.strokeStyle='#000'; ctx.fillStyle=(sm.white?'#ffffff':L.color);
+      ctx.strokeText(L.name,cx,ny); ctx.fillText(L.name,cx,ny); ctx.restore(); }
     ctx.font='700 26px "Inter",system-ui,sans-serif'; ctx.fillStyle='#fff'; ctx.lineWidth=5; ctx.strokeStyle='rgba(0,0,0,0.55)';
     var st=L.kills+' KILLS'; ctx.strokeText(st,cx,253); ctx.fillText(st,cx,253); }
   function bottomStats(L){ var cx=L.cx; ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -1057,7 +1068,9 @@
     gtext(W/2, 205, 'VS', '#46e2a0', 1.2);
     gtext(W/2, 292, elapsed.toFixed(1)+'s', 'rgba(159,230,160,0.5)', 0.7);
     for(var li=0;li<lanes.length;li++){ var L=lanes[li], cx=L.cx, col=L.dead?'#6a6f78':L.color;
-      gtext(cx,205,L.name,col,1.5);
+      var nsm=nameSlam(li);
+      if(nsm.mode==='slam'){ ctx.save(); ctx.globalAlpha=nsm.alpha; gtext(cx,205+nsm.dy,L.name,(nsm.white?'#ffffff':col),1.5*nsm.mult); ctx.restore(); }
+      else if(nsm.mode==='done') gtext(cx,205,L.name,col,1.5);
       gtext(cx,253,String(L.kills)+' KILLS','#ffd60a',1.2);
       // HP bar + ult name sit at the bottom, just below the hero sprite
       var segs=14, fr=Math.max(0,L.hp)/L.maxhp, fl=Math.round(fr*segs), bar='';
