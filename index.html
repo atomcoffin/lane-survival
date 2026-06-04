@@ -168,13 +168,14 @@
 <script src="characters/pucker.js"></script>
 <script src="characters/lazer.js"></script>
 <script src="characters/smacko.js"></script>
+<script src="characters/cattywumpus.js"></script>
 
 <script>
 (function(){
   "use strict";
   var cv=document.getElementById('cv'), ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
   var PAL=['#ff3b30','#0a84ff','#30d158','#ffd60a','#ff9f0a','#bf5af2'];
-  var ABILITIES=['ORBIT','NUKE','BEAM','SHOTGUN','SNIPER','FROG TONGUE','FART','BLACKHOLE','MINIGUN','PUCK','SKELETON','SLAP'];
+  var ABILITIES=['ORBIT','NUKE','BEAM','SHOTGUN','SNIPER','FROG TONGUE','FART','BLACKHOLE','MINIGUN','PUCK','SKELETON','SLAP','YARN'];
   // per-ability tunable parameters: {k:key, l:label, min, max, step, def}
   var ABSPEC={
     ORBIT:[{k:'orbs',l:'Orbs',min:1,max:8,step:1,def:4},{k:'radius',l:'Orbit radius',min:30,max:150,step:5,def:58},{k:'size',l:'Orb size',min:8,max:44,step:2,def:20},{k:'bossDmg',l:'Boss dmg/hit',min:1,max:60,step:1,def:5}],
@@ -188,7 +189,8 @@
     MINIGUN:[{k:'cooldown',l:'Fire interval',min:1,max:10,step:1,def:2},{k:'speed',l:'Bullet speed',min:12,max:40,step:1,def:26},{k:'spread',l:'Spread',min:0,max:0.5,step:0.02,def:0.18},{k:'bossDmg',l:'Boss dmg/hit',min:1,max:100,step:1,def:6}],
     PUCK:[{k:'count',l:'Max pucks',min:1,max:6,step:1,def:3},{k:'speed',l:'Puck speed',min:8,max:30,step:1,def:18},{k:'size',l:'Puck size',min:12,max:50,step:2,def:26},{k:'cooldown',l:'Launch gap',min:30,max:240,step:5,def:100},{k:'bossDmg',l:'Boss dmg/hit',min:10,max:500,step:5,def:105}],
     SKELETON:[{k:'cooldown',l:'Spawn gap',min:8,max:160,step:4,def:40},{k:'batch',l:'Per spawn',min:1,max:10,step:1,def:3},{k:'maxCount',l:'Max skeletons',min:4,max:60,step:1,def:20},{k:'hp',l:'Blocks each',min:1,max:25,step:1,def:5},{k:'lineDist',l:'Wall distance',min:120,max:640,step:20,def:340},{k:'bossDmg',l:'Boss dmg each',min:5,max:300,step:1,def:38}],
-    SLAP:[{k:'cooldown',l:'Slam gap',min:20,max:200,step:5,def:70},{k:'palmW',l:'Palm size',min:80,max:300,step:10,def:160},{k:'bossDmg',l:'Boss dmg/slap',min:10,max:600,step:5,def:90}]
+    SLAP:[{k:'cooldown',l:'Slam gap',min:20,max:200,step:5,def:70},{k:'palmW',l:'Palm size',min:80,max:300,step:10,def:160},{k:'bossDmg',l:'Boss dmg/slap',min:10,max:600,step:5,def:90}],
+    YARN:[{k:'count',l:'Max balls',min:1,max:5,step:1,def:2},{k:'speed',l:'Ball speed',min:8,max:30,step:1,def:14},{k:'size',l:'Ball size',min:10,max:40,step:2,def:18},{k:'cooldown',l:'Throw gap',min:10,max:200,step:5,def:70},{k:'ballLife',l:'Ball life',min:120,max:900,step:30,def:420},{k:'trailLife',l:'Trail life',min:20,max:200,step:10,def:70},{k:'ballDmg',l:'Ball dmg',min:1,max:40,step:1,def:5},{k:'bossDmg',l:'Boss dmg/hit',min:5,max:300,step:5,def:60}]
   };
   function ensureParams(side,ab){ if(!cfg[side].params[ab]){var o={};ABSPEC[ab].forEach(function(s){o[s.k]=s.def;});cfg[side].params[ab]=o;} return cfg[side].params[ab]; }
   var TOPBAR=300, FIELD_TOP=TOPBAR+10;
@@ -366,9 +368,10 @@
     {name:'BONES',   ability:'SKELETON',    color:'#ece8d6', fig:cfig('     ','o o','|||',['L','J'],['r','t'],' /\\  ',' | | ')},
     {name:'PUCKER',  ability:'PUCK',        color:'#ff6fae', fig:cfig(' .-. ','o o','(8)',['(',')'],[')','('],' J L ',' L J ')},
     {name:'LAZER',   ability:'BEAM',        color:'#ff5af2', fig:cfig(' /^\\ ','= =','{W}',['-','-'],['~','~'],' | | ',' /\\  ')},
-    {name:'SMACKO',  ability:'SLAP',        color:'#f0b98a', fig:cfig('     ','o o','(P)',['\\','/'],['/','\\'],' J L ',' L J ')}
+    {name:'SMACKO',  ability:'SLAP',        color:'#f0b98a', fig:cfig('     ','o o','(P)',['\\','/'],['/','\\'],' J L ',' L J ')},
+    {name:'CATTYWUMPUS', ability:'YARN',    color:'#f4a64d', fig:cfig('/\\_/\\','^.^','(=)',['<','>'],['/','\\'],' J L ',' L J ')}
   ];
-  var ULTS={GASBAG:'DUTCH OVEN',RIBBIT:'AMPLIFY',VOID:'EVENT HORIZON',BUZZSAW:'OVERCLOCK',DEADEYE:'BULLET TIME',KABOOM:'FALLOUT',SPRAY:'FULL CHOKE',RATATAT:'SPIN UP',BONES:'NECROMANCY',PUCKER:'MULTIBALL',LAZER:'OVERLOAD',SMACKO:'MEGA SMACK'};
+  var ULTS={GASBAG:'DUTCH OVEN',RIBBIT:'AMPLIFY',VOID:'EVENT HORIZON',BUZZSAW:'OVERCLOCK',DEADEYE:'BULLET TIME',KABOOM:'FALLOUT',SPRAY:'FULL CHOKE',RATATAT:'SPIN UP',BONES:'NECROMANCY',PUCKER:'MULTIBALL',LAZER:'OVERLOAD',SMACKO:'MEGA SMACK',CATTYWUMPUS:'FERAL FRENZY'};
   // per-character one-liners that pop above the hero; {idle} chatter, {hurt} when struck, {ult} on ultimate
   var QUIPS={
     GASBAG:{idle:["BRAAAP!","pull my finger","silent killer","gas leak!","who dealt it?"],hurt:["my gas!","oof, rancid","you smelled that?"],ult:["DUTCH OVEN!","hold your breath"]},
@@ -382,7 +385,8 @@
     BONES:{idle:["bone zone","rattle em","spooky","army rises"],hurt:["my femur!","ow, cracked","oof, marrow"],ult:["NECROMANCY!","rise up"]},
     PUCKER:{idle:["mwah","love hurts","kissy kissy","heart on"],hurt:["heartbroke!","ow, my lips","rude!"],ult:["MULTIBALL!","spread the love"]},
     LAZER:{idle:["pew pew","laser focus","beam me","fully charged"],hurt:["overheating!","ow, sparks","short circuit"],ult:["OVERLOAD!","max power"]},
-    SMACKO:{idle:["smack!","talk to the hand","slap city","high five?"],hurt:["my palm!","ow, stings","backhand!"],ult:["MEGA SMACK!","feel this"]}
+    SMACKO:{idle:["smack!","talk to the hand","slap city","high five?"],hurt:["my palm!","ow, stings","backhand!"],ult:["MEGA SMACK!","feel this"]},
+    CATTYWUMPUS:{idle:["mrow","knock it off","zoomies!","purr...","mine now","play with me"],hurt:["HISSS","ssst!","you'll pay","mrrrow!"],ult:["FERAL FRENZY!","NO MORE NICE CAT","i'll scratch you"]}
   };
   var ULT_THRESH=0.10;
   var BEAR_GAP=270, ROAR_DUR=72, SURV_CAP=160;
@@ -398,7 +402,8 @@
     "BONES":{w:6,idle:["/o.o\\ ", " |WW| ", "/|  |\\", " J  L "],act:["\\o.o/ ", " |VV| ", "\\|  |/", " J  L "]},
     "PUCKER":{w:6,idle:[" o<3  ", "(o.o) ", "/|  |\\", " d  b "],act:["o<3<3 ", "(^.*) ", "/|  |\\", " d  b "]},
     "LAZER":{w:6,idle:[" .--. ", "(-oo-)", " |  | ", " d  b "],act:[" .--. ", "(@oo@)", " |  | ", " d  b "]},
-    "SMACKO":{w:6,idle:["(o.o) ", " /||\\ ", " |  | ", " J  L "],act:["(O.O) ", " \\||/ ", " |  | ", " J  L "]}
+    "SMACKO":{w:6,idle:["(o.o) ", " /||\\ ", " |  | ", " J  L "],act:["(O.O) ", " \\||/ ", " |  | ", " J  L "]},
+    "CATTYWUMPUS":{w:6,idle:[" /\\_/\\", "(=o.o)", " (  ) ", " J  L "],act:[" /\\_/\\", "(=O.O)", "<(  )>", " J  L "],dead:[" /\\_/\\", "(=x.x)", " (  ) ", " J  L "]}
   };
   // Each character keeps a stable `key` (its original id) used to look up sprite art, ult
   // banner, and default dialogue — so the editable display `name` can be changed freely.
@@ -429,6 +434,7 @@
     return {side:side,name:conf.name||side,color:conf.color,ability:ab,params:prm,x0:x0,w:w,cx:x0+w/2,hy:H*0.86,r:46,
       hp:conf.hp,maxhp:conf.hp,kills:0,dmg:0,spawned:0,toSpawn:cfg.count,waveT:0.5,
       enemies:[],skeletons:[],fx:[],projectiles:[],pucks:[],mist:[],mistCd:0,orbAng:0,beamAng:-Math.PI/2,cd:0,nukeFlash:0,nukeR:200,tracer:null,
+      yarn:[],yarnTrail:[],feral:false,
       wave:-1, fartGap:0, actPulse:0, hole:null, hand:null, hand2:null, cd2:null, pads:[], chainPts:null, chainLife:0,
       flooded:false, hurtT:0, say:null, sayCd:2.5+Math.random()*3.5, quips:(conf.char!=null&&CHARACTERS[conf.char]?CHARACTERS[conf.char].quips:null), fig:(conf.char!=null&&CHARACTERS[conf.char]?CHARACTERS[conf.char].fig:makeHumanoid()), figArt:(conf.char!=null&&CHARACTERS[conf.char]&&CHARACTERS[conf.char].art?CHARACTERS[conf.char].art:null), blinkSeed:Math.random()*6.28,
       boss:null, bossDead:false, dead:false, cleared:false,
@@ -551,6 +557,31 @@
       if(L.hand2){ L.hand2.t--; if(L.hand2.t<=0)L.hand2=null; }
     }
 
+    else if(L.ability==='YARN'){ var maxB=Math.round(P.count)*(L.ulted?2:1); L.cd-=1;
+      // throw a fresh ball of yarn off to the left or right; it ricochets and lays a damaging trail
+      if(L.cd<=0 && L.yarn.length<maxB){ var ydir=Math.random()<0.5?-1:1, ysp=P.speed*(L.ulted?1.35:1), yvy=(Math.random()-0.5)*ysp*0.7, yvx=ydir*Math.sqrt(Math.max(1,ysp*ysp-yvy*yvy));
+        L.yarn.push({x:L.cx,y:L.hy-L.r-6,vx:yvx,vy:yvy,r:P.size*(L.ulted?1.2:1),life:Math.round(P.ballLife)}); tone(440,'triangle',0.2,0.003,0.12,160); L.actPulse=8; L.cd=Math.max(10,P.cooldown/ramp); }
+      var bdmg=P.ballDmg*(L.ulted?2:1), trLife=Math.round(P.trailLife*(L.ulted?1.6:1)), floorY=L.hy-L.r;
+      for(var yb=L.yarn.length-1;yb>=0;yb--){ var ball=L.yarn[yb], px0=ball.x, py0=ball.y; ball.x+=ball.vx; ball.y+=ball.vy; ball.life--;
+        if(ball.x-ball.r<L.x0){ball.x=L.x0+ball.r;ball.vx=Math.abs(ball.vx);sTick();}
+        if(ball.x+ball.r>L.x0+L.w){ball.x=L.x0+L.w-ball.r;ball.vx=-Math.abs(ball.vx);sTick();}
+        if(ball.y-ball.r<FIELD_TOP){ball.y=FIELD_TOP+ball.r;ball.vy=Math.abs(ball.vy);sTick();}
+        if(ball.y+ball.r>floorY){ball.y=floorY-ball.r;ball.vy=-Math.abs(ball.vy);sTick();}
+        L.yarnTrail.push({x1:px0,y1:py0,x2:ball.x,y2:ball.y,life:trLife,max:trLife}); if(L.yarnTrail.length>140)L.yarnTrail.shift();
+        for(var be=e.length-1;be>=0;be--){ var en3=e[be]; if((en3.x-ball.x)*(en3.x-ball.x)+(en3.y-ball.y)*(en3.y-ball.y)<(ball.r+en3.r)*(ball.r+en3.r)){
+          if(!en3.ballCd||en3.ballCd<=0){ en3.hp-=bdmg; en3.flash=3; en3.ballCd=4; addFx(L,en3.x,en3.y,'*','#ffffff');
+            if(en3.hp<=0){ addFx(L,en3.x,en3.y,'x','#ff9a6b'); e.splice(be,1); L.kills++; L.dmg+=1; sTick(); } } } }
+        if(b&&(ball.x-b.x)*(ball.x-b.x)+(ball.y-b.y)*(ball.y-b.y)<(ball.r+b.r)*(ball.r+b.r)){ var bnx=ball.x-b.x,bny=ball.y-b.y,bnd=Math.hypot(bnx,bny)||1;bnx/=bnd;bny/=bnd;var bdot=ball.vx*bnx+ball.vy*bny;ball.vx-=2*bdot*bnx;ball.vy-=2*bdot*bny;ball.x=b.x+bnx*(b.r+ball.r);ball.y=b.y+bny*(b.r+ball.r);dmgBoss(L,P.bossDmg); }
+        if(ball.life<=0)L.yarn.splice(yb,1); }
+      // age the trail; enemies crossing a strand take a chip of damage (per-enemy cooldown so it lingers, not melts)
+      for(var yt=L.yarnTrail.length-1;yt>=0;yt--){ if(--L.yarnTrail[yt].life<=0)L.yarnTrail.splice(yt,1); }
+      if(L.yarnTrail.length){ for(var te=e.length-1;te>=0;te--){ var ten=e[te]; if(ten.yarnCd>0){ten.yarnCd--;continue;}
+        for(var ts=0;ts<L.yarnTrail.length;ts++){ var sg=L.yarnTrail[ts], dxs=sg.x2-sg.x1, dys=sg.y2-sg.y1, sl2=dxs*dxs+dys*dys||1, tp=((ten.x-sg.x1)*dxs+(ten.y-sg.y1)*dys)/sl2; tp=tp<0?0:(tp>1?1:tp);
+          var cxp=sg.x1+dxs*tp, cyp=sg.y1+dys*tp, dds=(ten.x-cxp)*(ten.x-cxp)+(ten.y-cyp)*(ten.y-cyp);
+          if(dds<(ten.r+6)*(ten.r+6)){ ten.hp-=(L.ulted?2:1); ten.flash=3; ten.yarnCd=10; addFx(L,ten.x,ten.y,'+','#ff8ac0');
+            if(ten.hp<=0){ addFx(L,ten.x,ten.y,'x','#ff9a6b'); e.splice(te,1); L.kills++; L.dmg+=1; sTick(); } break; } } } }
+    }
+
     // projectiles (SHOTGUN / MINIGUN)
     for(i=L.projectiles.length-1;i>=0;i--){var pr=L.projectiles[i];pr.x+=pr.vx;pr.y+=pr.vy;
       if(pr.y<FIELD_TOP-60||pr.x<L.x0-20||pr.x>L.x0+L.w+20){L.projectiles.splice(i,1);continue;}
@@ -608,6 +639,11 @@
       if(L.ability==='SKELETON'){ for(var na=0;na<18;na++) raiseSkeleton(L, L.x0+22+Math.random()*(L.w-44), L.hy-40-Math.random()*L.params.lineDist); }
       // AMPLIFY: flood the whole lane — the hero rides a lily pad while enemies slog through the water
       if(L.ability==='FROG TONGUE'){ L.flooded=true; for(var sp3=0;sp3<14;sp3++){ var sa3=sp3/14*6.283; addFx(L, L.cx+Math.cos(sa3)*90, L.hy+Math.sin(sa3)*60, '~', '#4fa9e0'); } }
+      // FERAL FRENZY: the cat snaps — bristles up and hurls a flurry of fast, heavy yarn balls
+      if(L.ability==='YARN'){ L.feral=true; var yus=L.params.speed*1.4;
+        for(var yf=0;yf<4;yf++){ var yfd=Math.random()<0.5?-1:1, yfvy=(Math.random()-0.5)*yus*0.8, yfvx=yfd*Math.sqrt(Math.max(1,yus*yus-yfvy*yfvy));
+          L.yarn.push({x:L.cx,y:L.hy-L.r-6,vx:yfvx,vy:yfvy,r:L.params.size*1.2,life:L.params.ballLife}); }
+        sRoar(); }
       popSay(L,'ult',1.8);
     }
     if(L.actPulse>0) L.actPulse--;
@@ -698,6 +734,11 @@
       ctx.fillStyle='#fff'; for(i=0;i<L.projectiles.length;i++){var p=L.projectiles[i]; ctx.beginPath(); ctx.arc(p.x,p.y,5,0,Math.PI*2); ctx.fill();}
       // pucks
       for(i=0;i<L.pucks.length;i++){var pu=L.pucks[i]; ctx.beginPath(); ctx.arc(pu.x,pu.y,pu.r,0,Math.PI*2); ctx.fillStyle=L.color; ctx.fill(); ctx.lineWidth=5; ctx.strokeStyle='#fff'; ctx.stroke(); ctx.beginPath(); ctx.arc(pu.x,pu.y,pu.r*0.42,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.85)'; ctx.fill();}
+      // yarn (trail strands + bouncing balls)
+      if(L.ability==='YARN'){ var yc=L.feral?'#ff5b4a':'#ff6fae'; ctx.lineCap='round';
+        for(var yt3=0;yt3<L.yarnTrail.length;yt3++){ var sg3=L.yarnTrail[yt3]; ctx.globalAlpha=Math.max(0,Math.min(0.85,sg3.life/(sg3.max||60))); ctx.strokeStyle=yc; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(sg3.x1,sg3.y1); ctx.lineTo(sg3.x2,sg3.y2); ctx.stroke(); }
+        ctx.globalAlpha=1; ctx.lineCap='butt';
+        for(var yb3=0;yb3<L.yarn.length;yb3++){ var bl3=L.yarn[yb3]; ctx.beginPath(); ctx.arc(bl3.x,bl3.y,bl3.r,0,Math.PI*2); ctx.fillStyle=yc; ctx.fill(); ctx.lineWidth=4; ctx.strokeStyle='#fff'; ctx.stroke(); ctx.beginPath(); ctx.arc(bl3.x,bl3.y,bl3.r*0.42,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.fill(); } }
       // chain lightning
       if(L.chainPts&&L.chainLife>0){ ctx.strokeStyle='#ff6fae'; ctx.globalAlpha=Math.min(1,L.chainLife/7); ctx.lineWidth=8; ctx.lineCap='round'; ctx.beginPath();
         for(var c=0;c<L.chainPts.length;c++){var pt=L.chainPts[c]; if(c===0)ctx.moveTo(pt.x,pt.y); else ctx.lineTo(pt.x,pt.y);} ctx.stroke();
@@ -723,7 +764,7 @@
       // lily pad under the hero (AMPLIFY)
       if(L.flooded){ ctx.save(); ctx.beginPath(); ctx.ellipse(L.cx,L.hy+L.r*0.55,L.r*1.5,L.r*0.62,0,0.5,Math.PI*2+0.5-1.0); ctx.lineTo(L.cx,L.hy+L.r*0.55); ctx.closePath(); ctx.fillStyle='#3f8f3a'; ctx.fill(); ctx.strokeStyle='#2c6b29'; ctx.lineWidth=3; ctx.stroke(); ctx.restore(); }
       // hero
-      var hShakeF=(L.hurtT>0)?((Math.floor(elapsed*50)&1)?4:-4):0, hColF=(L.hurtT>0&&(Math.floor(L.hurtT/2)&1))?'#ff5b4a':L.color;
+      var hShakeF=(L.hurtT>0)?((Math.floor(elapsed*50)&1)?4:-4):0, hColF=(L.hurtT>0&&(Math.floor(L.hurtT/2)&1))?'#ff5b4a':(L.feral?((Math.floor(elapsed*12)&1)?'#ff3b30':'#ff8c3a'):L.color);
       if(!L.dead){ctx.beginPath();ctx.arc(L.cx+hShakeF,L.hy,L.r,0,Math.PI*2);ctx.fillStyle=hColF;ctx.fill();ctx.lineWidth=6;ctx.strokeStyle='#fff';ctx.stroke();}
       else{ctx.save();ctx.globalAlpha=0.4;ctx.beginPath();ctx.arc(L.cx,L.hy,L.r,0,Math.PI*2);ctx.fillStyle='#444';ctx.fill();ctx.restore();ctx.font='800 34px "Inter",system-ui,sans-serif';ctx.fillStyle='#888';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('DOWN',L.cx,L.hy);}
       ctx.restore();
@@ -866,6 +907,9 @@
       if(L.tracer){ line(L.cx,L.hy-L.r,L.tracer.x,L.tracer.y,'=',L.color); var tc=w2c(L.tracer.x),tr=w2r(L.tracer.y); plot(tc,tr,'*','#ffffff'); plot(tc+1,tr,'+',L.color); plot(tc-1,tr,'+',L.color); plot(tc,tr-1,'+',L.color); plot(tc,tr+1,'+',L.color); }
       for(i=0;i<L.projectiles.length;i++){ var pj=L.projectiles[i],psp=Math.hypot(pj.vx,pj.vy)||1; plot(w2c(pj.x-pj.vx/psp*cellH),w2r(pj.y-pj.vy/psp*cellH),'.',L.color); plot(w2c(pj.x),w2r(pj.y),'!','#ffffff'); }
       for(i=0;i<L.pucks.length;i++) disc(L.pucks[i].x,L.pucks[i].y,L.pucks[i].r,'O',L.color);
+      if(L.ability==='YARN'){ var ycol=L.feral?'#ff5b4a':'#ff6fae', ycol2=L.feral?'#b53026':'#a8466f';
+        for(var yt2=0;yt2<L.yarnTrail.length;yt2++){ var sg2=L.yarnTrail[yt2], lf=sg2.life/(sg2.max||60); line(sg2.x1,sg2.y1,sg2.x2,sg2.y2,(lf>0.5?'~':'.'),(lf>0.5?ycol:ycol2)); }
+        for(var yb2=0;yb2<L.yarn.length;yb2++){ var bl=L.yarn[yb2]; disc(bl.x,bl.y,bl.r,(L.feral?'@':'o'),ycol); plot(w2c(bl.x),w2r(bl.y),'*','#ffffff'); } }
       if(b){ var BD=BOSSES[cfg.bossIdx]||BOSSES[0], bX=(b.drawX!=null?b.drawX:b.x);
         var shk=(b.flash>0||b.roar>0)?(Math.random()-0.5)*cellW*0.8:0, bx2=bX+shk, col=b.flash>0?'#ffffff':(b.roar>0?'#ffae5a':(BD.color||L.color));
         ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -882,8 +926,10 @@
         var bob=dead?0:((Math.sin(t*1.5+L.blinkSeed)>0.2)?-1:0);
         var hurtOn=!dead&&L.hurtT>0, hshk=hurtOn?((Math.floor(t*50)&1)?2:-2):0;
         var fcl=dead?'#6a6f78':(L.ulted?'#ffffff':L.color);
+        if(L.feral&&!dead) fcl=(Math.floor(t*12)&1)?'#ff3b30':'#ff8c3a';   // FERAL FRENZY: angry red/orange flicker
         if(hurtOn) fcl=(Math.floor(L.hurtT/2)&1)?'#ff5b4a':'#ffd0c8';
         if(L.ulted){ var aR=L.r+26+Math.sin(elapsed*9)*9; for(var av=0;av<11;av++){ var aa=av/11*6.283+elapsed*3.2; plot(w2c(L.cx+Math.cos(aa)*aR), w2r(L.hy+Math.sin(aa)*aR), (av&1?'*':'+'), L.color); } }
+        if(L.feral&&!dead){ var spR=L.r+12+Math.sin(elapsed*14)*4; for(var fv=0;fv<10;fv++){ var fva=fv/10*6.283+elapsed*2.0; plot(w2c(L.cx+Math.cos(fva)*spR), w2r(L.hy-4+Math.sin(fva)*spR*0.8), '^', (fv&1?'#ff3b30':'#ffae5a')); } }
         if(L.figArt){ var art=L.figArt, abx=L.ability;
           var actingA=!dead&&(L.actPulse>0 || abx==='ORBIT' || abx==='BEAM' || (abx==='BLACKHOLE'&&L.hole));
           var frames=dead?(art.dead||art.idle):((actingA&&art.act)?art.act:art.idle);
