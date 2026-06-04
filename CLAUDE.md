@@ -8,9 +8,10 @@ A single self-contained HTML "battle generator" for vertical short-form video (T
 The real product is the *content* (funny matchups, names, captions); the engine is the vehicle.
 
 ## Files
-- `index.html` — the entire app. One big inline `<script>` + `<style>`. No build step, no dependencies except Google Fonts (CDN). This is intentional — keep it single-file unless asked to modularize.
-- `tools/validate.js` — headless Node balance harness. Loads the engine, stubs the browser, and simulates matches. **This is critical infra.**
-- Open `index.html` directly in a browser to play, or `npx serve` for a local server.
+- `index.html` — the entire app. One big inline `<script>` + `<style>`. No build step, no dependencies except Google Fonts (CDN). Keep the *engine* single-file unless asked to modularize.
+- `characters/` — editable content overrides, **one plain `.js` file per hero** (plus `README.md`). Each registers `window.LS_CHARACTERS.<KEY> = { name, color?, idle[], hurt[], ult[] }`; `index.html` loads them via `<script src>` tags (just before the main script) and merges them over the baked-in defaults at load. Lets the maintainer change a hero's **display name and dialogue on the fly** — edit a file, refresh, done. Each character has a stable `key` (its original id) used for sprite/ult/dialogue lookup, so the editable `name` can change freely without breaking art. The inline `QUIPS`/`CHARACTERS` defaults in `index.html` are the fallback: a missing/broken/absent `characters/` folder just reverts to defaults, so `file://` double-click, GitHub Pages, and the validate harness all keep working. **Content-only (names/dialogue/color) — never abilities, sprites, or balance; those stay in `index.html`.** This is the one sanctioned exception to single-file.
+- `tools/validate.js` — headless Node balance harness. Loads the engine, stubs the browser, and simulates matches. Extracts the main script via a `<script>` (no-attribute) regex, so the `characters/*.js` tags (which have a `src` attribute) are correctly skipped — don't add an attribute-less `<script>` before the main one. **This is critical infra.**
+- Open `index.html` directly in a browser to play, or `npx serve` for a local server. Hosts as static files on GitHub Pages (the `characters/` folder ships alongside `index.html`).
 
 ## THE GOLDEN RULE — balance
 **Every matchup must last longer than 60 seconds** (sub-60s videos earn $0 on TikTok), be **bounded** (~110s max, no timeouts/draws), and ideally swing between runs. The balance harness checks this:
