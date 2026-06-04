@@ -99,6 +99,7 @@
       <button class="act" id="roll">🎲 Random</button>
       <button class="act" id="reset">Reset</button>
       <button class="act rec" id="rec">● Record</button>
+      <button class="act" id="ultnow">⚡ ULT NOW</button>
       <a id="dl" download="lane-battle.webm">↓ Download clip</a>
     </div>
     <div class="status" id="status"></div>
@@ -618,6 +619,29 @@
     }
   }
 
+  // Activate a lane's ultimate (the 10%-HP auto-trigger and the manual "ULT NOW" button both call this).
+  function fireUlt(L){ if(!L||!L.ultReady||L.dead||L.hp<=0) return;
+    L.ultReady=false; L.ulted=true; L.ultFlash=1; L.ultBannerT=1.4;
+    L.hp=Math.min(L.maxhp, L.hp + L.maxhp*0.22);
+    for(var ui=L.enemies.length-1;ui>=0;ui--){ var ue=L.enemies[ui]; if((ue.x-L.cx)*(ue.x-L.cx)+(ue.y-L.hy)*(ue.y-L.hy) < 330*330) killAt(L,ui); }
+    for(var uf=0;uf<16;uf++){ var ua=uf/16*6.283; addFx(L, L.cx+Math.cos(ua)*64, L.hy+Math.sin(ua)*64, '*', '#ffffff'); }
+    sUlt();
+    // MULTIBALL: split every puck in two and supersize them
+    if(L.ability==='PUCK'){ var sp0=L.params.speed;
+      if(!L.pucks.length){ for(var ps=0;ps<2;ps++){ var sa=Math.random()*6.283; L.pucks.push({x:L.cx,y:L.hy-L.r-34,vx:Math.cos(sa)*sp0,vy:Math.sin(sa)*sp0,r:L.params.size*1.6}); } }
+      else { var clones=[]; for(var pj=0;pj<L.pucks.length;pj++){ var op=L.pucks[pj]; op.r*=1.6; var spd0=Math.hypot(op.vx,op.vy)||sp0, na=Math.atan2(op.vy,op.vx)+1.7+Math.random()*0.6; clones.push({x:op.x,y:op.y,vx:Math.cos(na)*spd0,vy:Math.sin(na)*spd0,r:op.r}); }
+        for(var cl=0;cl<clones.length;cl++) L.pucks.push(clones[cl]); } }
+    // NECROMANCY: raise an army at once (and from here on, slain enemies rise as skeletons)
+    if(L.ability==='SKELETON'){ for(var na=0;na<18;na++) raiseSkeleton(L, L.x0+22+Math.random()*(L.w-44), L.hy-40-Math.random()*L.params.lineDist); }
+    // AMPLIFY: flood the whole lane — the hero rides a lily pad while enemies slog through the water
+    if(L.ability==='FROG TONGUE'){ L.flooded=true; for(var sp3=0;sp3<14;sp3++){ var sa3=sp3/14*6.283; addFx(L, L.cx+Math.cos(sa3)*90, L.hy+Math.sin(sa3)*60, '~', '#4fa9e0'); } }
+    // FERAL FRENZY: the cat snaps — bristles up and hurls a flurry of fast, heavy yarn balls
+    if(L.ability==='YARN'){ L.feral=true; var yus=L.params.speed*1.4;
+      for(var yf=0;yf<4;yf++){ var yfd=Math.random()<0.5?-1:1, yfvy=(Math.random()-0.5)*yus*0.8, yfvx=yfd*Math.sqrt(Math.max(1,yus*yus-yfvy*yfvy));
+        L.yarn.push({x:L.cx,y:L.hy-L.r-6,vx:yfvx,vy:yfvy,r:L.params.size*1.2,life:L.params.ballLife}); }
+      sRoar(); }
+    popSay(L,'ult',1.8);
+  }
   function stepLane(L,ramp){ if(L.dead)return;
     if(L.hurtT>0)L.hurtT--;
     if(L.say){ L.say.life-=FIXED/1000; if(L.say.life<=0)L.say=null; }
@@ -650,28 +674,7 @@
         B.poopCd=(B.poopCd||0)-1;
         if(B.poopCd<=0){ var px=B.drawX+(Math.random()-0.5)*60; if(px<L.x0+30)px=L.x0+30; if(px>L.x0+L.w-30)px=L.x0+L.w-30; L.enemies.push({x:px,y:B.y+22,r:16,sm:0.5+Math.random()*0.3,sw:0.5+Math.random()*1.1,sf:2+Math.random()*3,ph:Math.random()*6.28,poop:true}); B.poopCd=Math.round(cfg.poopGap); }
       } }
-    if(L.ultReady && !L.dead && L.hp>0 && L.hp < L.maxhp*ULT_THRESH){
-      L.ultReady=false; L.ulted=true; L.ultFlash=1; L.ultBannerT=1.4;
-      L.hp=Math.min(L.maxhp, L.hp + L.maxhp*0.22);
-      for(var ui=L.enemies.length-1;ui>=0;ui--){ var ue=L.enemies[ui]; if((ue.x-L.cx)*(ue.x-L.cx)+(ue.y-L.hy)*(ue.y-L.hy) < 330*330) killAt(L,ui); }
-      for(var uf=0;uf<16;uf++){ var ua=uf/16*6.283; addFx(L, L.cx+Math.cos(ua)*64, L.hy+Math.sin(ua)*64, '*', '#ffffff'); }
-      sUlt();
-      // MULTIBALL: split every puck in two and supersize them
-      if(L.ability==='PUCK'){ var sp0=L.params.speed;
-        if(!L.pucks.length){ for(var ps=0;ps<2;ps++){ var sa=Math.random()*6.283; L.pucks.push({x:L.cx,y:L.hy-L.r-34,vx:Math.cos(sa)*sp0,vy:Math.sin(sa)*sp0,r:L.params.size*1.6}); } }
-        else { var clones=[]; for(var pj=0;pj<L.pucks.length;pj++){ var op=L.pucks[pj]; op.r*=1.6; var spd0=Math.hypot(op.vx,op.vy)||sp0, na=Math.atan2(op.vy,op.vx)+1.7+Math.random()*0.6; clones.push({x:op.x,y:op.y,vx:Math.cos(na)*spd0,vy:Math.sin(na)*spd0,r:op.r}); }
-          for(var cl=0;cl<clones.length;cl++) L.pucks.push(clones[cl]); } }
-      // NECROMANCY: raise an army at once (and from here on, slain enemies rise as skeletons)
-      if(L.ability==='SKELETON'){ for(var na=0;na<18;na++) raiseSkeleton(L, L.x0+22+Math.random()*(L.w-44), L.hy-40-Math.random()*L.params.lineDist); }
-      // AMPLIFY: flood the whole lane — the hero rides a lily pad while enemies slog through the water
-      if(L.ability==='FROG TONGUE'){ L.flooded=true; for(var sp3=0;sp3<14;sp3++){ var sa3=sp3/14*6.283; addFx(L, L.cx+Math.cos(sa3)*90, L.hy+Math.sin(sa3)*60, '~', '#4fa9e0'); } }
-      // FERAL FRENZY: the cat snaps — bristles up and hurls a flurry of fast, heavy yarn balls
-      if(L.ability==='YARN'){ L.feral=true; var yus=L.params.speed*1.4;
-        for(var yf=0;yf<4;yf++){ var yfd=Math.random()<0.5?-1:1, yfvy=(Math.random()-0.5)*yus*0.8, yfvx=yfd*Math.sqrt(Math.max(1,yus*yus-yfvy*yfvy));
-          L.yarn.push({x:L.cx,y:L.hy-L.r-6,vx:yfvx,vy:yfvy,r:L.params.size*1.2,life:L.params.ballLife}); }
-        sRoar(); }
-      popSay(L,'ult',1.8);
-    }
+    if(L.ultReady && L.hp>0 && L.hp < L.maxhp*ULT_THRESH) fireUlt(L);  // auto last-stand at 10% HP
     if(L.actPulse>0) L.actPulse--;
     if(L.ultFlash>0) L.ultFlash-=0.06;
     if(L.ultBannerT>0) L.ultBannerT-=FIXED/1000;
@@ -1073,6 +1076,9 @@
     }catch(err){ CAPSCALE=1; applyCaptureScale(); draw(); setStatus('REC ERROR — SCREEN-RECORD'); }
   }
   document.getElementById('rec').onclick=function(){ if(rec.state==='recording'){try{rec.stop();}catch(e){}}else startRec(); };
+  (function(){ var ub=document.getElementById('ultnow'); if(!ub)return; ub.onclick=function(){ if(!lanes||!lanes.length)return;
+    var fired=0; for(var i=0;i<lanes.length;i++){ var L=lanes[i]; if(L.ultReady&&!L.dead&&L.hp>0){ fireUlt(L); fired++; } }
+    if(!running)draw(); setStatus(fired?('ULT! ('+fired+')'):'no ults left this round'); }; })();
   function setStatus(s){document.getElementById('status').textContent=s;}
 
   /* ============ START ============ */
