@@ -214,7 +214,7 @@
   var cfg={ A:{name:'GASBAG',color:'#5fc23f',ability:'FART',hp:7600,char:0,params:{}},
             B:{name:'LICKY RICKY',color:'#46e2a0',ability:'FROG TONGUE',hp:7600,char:1,params:{}},
             count:700, espd:3.5, edmg:13, bossHp:8500, cap:30, enemyChar:'&', bossIdx:0, poopGap:24, poopDmg:55, sound:true, pick:true, autorec:true };
-  var lanes=[], running=false, finished=false, winnerSide=null, t0=0, elapsed=0, raf=null, countdown=0;
+  var lanes=[], boss=null, running=false, finished=false, winnerSide=null, t0=0, elapsed=0, raf=null, countdown=0;
   var introT=0, shakeT=0, shakeMag=0, slamA=false, slamB=false;  // intro card + impact shake
   var ko=null, KO_DUR=1.6, SFX={};
   var callouts=[], koMile=0, lastLead=null;
@@ -453,12 +453,12 @@
       enemies:[],skeletons:[],fx:[],projectiles:[],pucks:[],mist:[],mistCd:0,orbAng:0,beamAng:-Math.PI/2,cd:0,nukeFlash:0,nukeR:200,tracer:null,
       yarn:[],yarnTrail:[],feral:false,
       wave:-1, fartGap:0, actPulse:0, hole:null, hand:null, hand2:null, cd2:null, pads:[], chainPts:null, chainLife:0,
-      flooded:false, surge:-1, surgeCd:90, tapes:[], dots:[], hurtT:0, say:null, sayCd:2.5+Math.random()*3.5, quips:(conf.char!=null&&CHARACTERS[conf.char]?CHARACTERS[conf.char].quips:null), fig:(conf.char!=null&&CHARACTERS[conf.char]?CHARACTERS[conf.char].fig:makeHumanoid()), figArt:(conf.char!=null&&CHARACTERS[conf.char]&&CHARACTERS[conf.char].art?CHARACTERS[conf.char].art:null), blinkSeed:Math.random()*6.28,
+      flooded:false, surge:-1, surgeCd:90, tapes:[], dots:[], hurtT:0, say:null, sayCd:5+Math.random()*6, quips:(conf.char!=null&&CHARACTERS[conf.char]?CHARACTERS[conf.char].quips:null), fig:(conf.char!=null&&CHARACTERS[conf.char]?CHARACTERS[conf.char].fig:makeHumanoid()), figArt:(conf.char!=null&&CHARACTERS[conf.char]&&CHARACTERS[conf.char].art?CHARACTERS[conf.char].art:null), blinkSeed:Math.random()*6.28,
       boss:null, bossDead:false, dead:false, cleared:false,
       ultReady:true, ulted:false, ultT:0, ultFlash:0, ultBannerT:0, ultName:(conf.char!=null&&CHARACTERS[conf.char]?ULTS[CHARACTERS[conf.char].key]:'OVERDRIVE')}; }
   function reset(){ cancelAnimationFrame(raf); running=false; finished=false; winnerSide=null; elapsed=0; countdown=0; phase='survive'; alertT=0; callouts=[]; koMile=0; lastLead=null; ko=null;
     if(rec.state==='recording'){try{rec.stop();}catch(e){}}
-    lanes=[makeLane('A',cfg.A,0),makeLane('B',cfg.B,W/2)]; lanes[0].boss=mkBoss(lanes[0]); lanes[1].boss=mkBoss(lanes[1]); draw(); setStatus(''); }
+    lanes=[makeLane('A',cfg.A,0),makeLane('B',cfg.B,W/2)]; boss=mkBoss(); draw(); setStatus(''); }
   // enemy archetypes — distinct movement/size so the horde doesn't all play the same.
   // wt=spawn weight, sm=speed mult, sw=sway amount, sf=sway freq, sz=emoji size, r=hit radius, hp=base hp,
   // dash=charges in bursts, emo=override emoji (else the boss-themed grunt emoji).
@@ -667,7 +667,7 @@
   function stepLane(L,ramp){ if(L.dead)return;
     if(L.hurtT>0)L.hurtT--;
     if(L.say){ L.say.life-=FIXED/1000; if(L.say.life<=0)L.say=null; }
-    L.sayCd-=FIXED/1000; if(L.sayCd<=0 && !L.say && countdown<=0){ popSay(L,'idle'); L.sayCd=3.5+Math.random()*4.5; }
+    L.sayCd-=FIXED/1000; if(L.sayCd<=0 && !L.say && countdown<=0){ popSay(L,'idle'); L.sayCd=7.5+Math.random()*8; }  // occasional, not constant
     for(var fi=L.fx.length-1;fi>=0;fi--){ if(--L.fx[fi].life<=0)L.fx.splice(fi,1); }
     L.waveT-=FIXED/1000;
     if(L.waveT<=0 && L.enemies.length<160){ var waveN=Math.min(60,2+Math.floor(elapsed*0.50)), gap=Math.max(0.30,2.0-elapsed*0.024);
@@ -686,25 +686,8 @@
       if(blk) continue;
       if(dist<L.r+en.r){ L.enemies.splice(i,1); L.hp-=(en.poop?cfg.poopDmg:(en.cub?cfg.edmg*5:(en.elite?cfg.edmg*4:cfg.edmg)))*(L.ulted?0.5:1); sThud();
         L.hurtT=11; for(var hk=0;hk<5;hk++){ var ha=hk/5*6.283; addFx(L, L.cx+Math.cos(ha)*L.r*0.7, L.hy+Math.sin(ha)*L.r*0.7, (hk&1?'!':'x'), '#ff5b4a'); }
-        if(!L.say && Math.random()<0.4) popSay(L,'hurt',1.2); } }
-    if(L.boss){ var B=L.boss; B.ph+=0.08; if(B.flash>0)B.flash-=0.08;
-      if(B.kind==='grudge'){ B.drawX=B.x+Math.cos(B.ph)*L.w*0.06; B.drawY=B.y+Math.sin(B.ph)*L.w*0.055; }  // slow circular head roll
-      else { B.drawX=B.x+Math.sin(B.ph)*L.w*0.12; B.drawY=B.y; }
-      if(B.kind==='bear'){
-        if(B.roar>0){ B.roar--; if(B.roar<=0) B.atkCd=BEAR_GAP; }
-        else { B.atkCd=(B.atkCd==null?Math.round(BEAR_GAP*0.5):B.atkCd)-1;
-          if(B.atkCd<=0){ B.roar=ROAR_DUR; sRoar(); popCallout('ROAR!','#ff8c3a');
-            for(var cb=0;cb<3;cb++){ var cox=B.drawX+(cb-1)*44; L.enemies.push({x:cox,y:B.y+26,r:28,hp:6,cub:true,flash:0,sm:0.95+Math.random()*0.3,sw:0.6+Math.random()*1.2,sf:2+Math.random()*3,ph:Math.random()*6.28}); } } }
-      } else if(B.kind==='grudge'){
-        if(B.throw>0)B.throw--;
-        B.atkCd=(B.atkCd==null?Math.round(GRUDGE_GAP*0.5):B.atkCd)-1;
-        if(B.atkCd<=0){ B.atkCd=GRUDGE_GAP; B.throw=THROW_DUR; tone(150,'sawtooth',0.22,0.005,0.22,60); tone(440,'square',0.1,0.003,0.16,90); popCallout('VHS!','#c89aff');
-          var gx0=B.drawX, gy0=(B.drawY!=null?B.drawY:B.y)+24, gang=Math.atan2((L.hy-L.r)-gy0, L.cx-gx0), gvs=46;
-          L.tapes.push({x:gx0,y:gy0,vx:Math.cos(gang)*gvs,vy:Math.sin(gang)*gvs,t:0,spin:0}); }
-      } else {
-        B.poopCd=(B.poopCd||0)-1;
-        if(B.poopCd<=0){ var px=B.drawX+(Math.random()-0.5)*60; if(px<L.x0+30)px=L.x0+30; if(px>L.x0+L.w-30)px=L.x0+L.w-30; L.enemies.push({x:px,y:B.y+22,r:16,sm:0.5+Math.random()*0.3,sw:0.5+Math.random()*1.1,sf:2+Math.random()*3,ph:Math.random()*6.28,poop:true}); B.poopCd=Math.round(cfg.poopGap); }
-      } }
+        if(!L.say && Math.random()<0.22) popSay(L,'hurt',1.2); } }
+    // (the boss now lives outside the lane and feeds both lanes equally — see stepBoss)
     // VHS tapes (THE GRUDGE): rocket straight at the hero, then curse them with damage-over-time
     if(L.tapes.length){ for(var vi=L.tapes.length-1;vi>=0;vi--){ var tp=L.tapes[vi]; tp.t++; tp.spin+=0.6; tp.x+=tp.vx; tp.y+=tp.vy;
       var vd=Math.hypot(tp.x-L.cx, tp.y-(L.hy-L.r));
@@ -721,17 +704,46 @@
   }
 
   function laneClear(L){ return L.spawned>=L.toSpawn && L.enemies.length===0; }
-  function mkBoss(L){ var BD=BOSSES[cfg.bossIdx]||BOSSES[0]; return {x:L.cx,y:FIELD_TOP+185,r:48,ph:0,flash:0,kind:BD.kind||null,roar:0,atkCd:Math.round(BEAR_GAP*0.6),invuln:true}; }
+  // ONE boss for the whole screen: a single centered sprite that is the shared threat for both lanes
+  // and the source of every lane's waves. It feeds BOTH lanes equal pressure (see stepBoss).
+  function mkBoss(){ var BD=BOSSES[cfg.bossIdx]||BOSSES[0]; return {x:W/2,y:FIELD_TOP+185,r:48,ph:0,flash:0,kind:BD.kind||null,roar:0,throw:0,atkCd:Math.round(BEAR_GAP*0.6),invuln:true,say:null,sayCd:8+Math.random()*6}; }
   function popCallout(txt,color){ callouts.push({txt:txt,color:color||'#ffd60a',life:1.5}); if(callouts.length>3)callouts.shift(); }
   function popSay(L,kind,life){ var pack=L.quips; if(!pack)return; var list=pack[kind]||pack.idle; if(!list||!list.length)return;
     var idx=Math.floor((elapsed*7.13+L.cx*0.013+L.kills)% list.length); if(idx<0)idx+=list.length;
     L.say={txt:list[idx], col:(kind==='hurt'?'#ff5b4a':(kind==='ult'?'#ffd60a':L.color)), life:life||1.6, kind:kind}; }
+  // boss dialogue — short, calm, occasional taunts that read as the boss SPEAKING (one anchored caption)
+  var BOSS_TAUNTS={ bear:["grrrr...","more keep coming","still standing?","you'll tire","keep running"],
+                    grudge:["...","i see you","no escape","closer now","don't blink"],
+                    def:["endless","no rest for you","give up","tick... tock"] };
+  function popBossSay(B){ var list=BOSS_TAUNTS[B.kind]||BOSS_TAUNTS.def; var idx=Math.floor((elapsed*0.37+B.ph)%list.length); if(idx<0)idx+=list.length; B.say={txt:list[idx], life:2.4}; }
+  // single shared boss: steps once per tick and feeds BOTH lanes equal pressure (symmetric cubs/tapes/poop)
+  function stepBoss(){ var B=boss; if(!B)return; B.ph+=0.08; if(B.flash>0)B.flash-=0.08;
+    if(B.kind==='grudge'){ B.drawX=B.x+Math.cos(B.ph)*W*0.03; B.drawY=B.y+Math.sin(B.ph)*W*0.028; }  // slow head roll
+    else { B.drawX=B.x+Math.sin(B.ph)*W*0.05; B.drawY=B.y; }
+    // boss dialogue: RARE + calm — one contained caption, not constant chatter
+    if(B.say){ B.say.life-=FIXED/1000; if(B.say.life<=0)B.say=null; }
+    else { B.sayCd-=FIXED/1000; if(B.sayCd<=0 && countdown<=0 && !finished){ popBossSay(B); B.sayCd=12+Math.random()*9; } }
+    if(B.kind==='bear'){
+      if(B.roar>0){ B.roar--; if(B.roar<=0) B.atkCd=BEAR_GAP; }
+      else { B.atkCd=(B.atkCd==null?Math.round(BEAR_GAP*0.5):B.atkCd)-1;
+        if(B.atkCd<=0){ B.roar=ROAR_DUR; sRoar();
+          for(var li=0;li<lanes.length;li++){ var L=lanes[li]; for(var cb=0;cb<3;cb++){ var cox=L.cx+(cb-1)*44; L.enemies.push({x:cox,y:B.y+26,r:28,hp:6,cub:true,flash:0,sm:0.95+Math.random()*0.3,sw:0.6+Math.random()*1.2,sf:2+Math.random()*3,ph:Math.random()*6.28}); } } } }
+    } else if(B.kind==='grudge'){
+      if(B.throw>0)B.throw--;
+      B.atkCd=(B.atkCd==null?Math.round(GRUDGE_GAP*0.5):B.atkCd)-1;
+      if(B.atkCd<=0){ B.atkCd=GRUDGE_GAP; B.throw=THROW_DUR; tone(150,'sawtooth',0.22,0.005,0.22,60); tone(440,'square',0.1,0.003,0.16,90);
+        for(var lj=0;lj<lanes.length;lj++){ var L2=lanes[lj]; var gx0=L2.cx, gy0=B.y+24, gang=Math.atan2((L2.hy-L2.r)-gy0, L2.cx-gx0), gvs=46;
+          L2.tapes.push({x:gx0,y:gy0,vx:Math.cos(gang)*gvs,vy:Math.sin(gang)*gvs,t:0,spin:0}); } }
+    } else {
+      B.poopCd=(B.poopCd||0)-1;
+      if(B.poopCd<=0){ for(var lk=0;lk<lanes.length;lk++){ var L3=lanes[lk]; var px=L3.cx+(Math.random()-0.5)*60; if(px<L3.x0+30)px=L3.x0+30; if(px>L3.x0+L3.w-30)px=L3.x0+L3.w-30; L3.enemies.push({x:px,y:B.y+22,r:16,sm:0.5+Math.random()*0.3,sw:0.5+Math.random()*1.1,sf:2+Math.random()*3,ph:Math.random()*6.28,poop:true}); } B.poopCd=Math.round(cfg.poopGap); }
+    } }
   function beginKO(loser,winner){ if(ko)return; ko={loser:loser,winner:winner,t:KO_DUR}; var Ll=loser==='A'?lanes[0]:lanes[1]; for(var k=0;k<20;k++){ var a=k/20*6.283; addFx(Ll, Ll.cx+Math.cos(a)*42, Ll.hy+Math.sin(a)*42, (k&1?'*':'x'), '#ff3b30'); } sKO(); }
   function simTick(){
     if(finished) return;
     if(ko){ ko.t-=FIXED/1000; if(ko.t<=0){ var kw=ko.winner; ko=null; end(kw); } return; }
     var ramp=1+Math.max(0,elapsed-8)*0.030+Math.max(0,elapsed-60)*0.075;
-    stepLane(lanes[0],ramp); stepLane(lanes[1],ramp);
+    stepLane(lanes[0],ramp); stepLane(lanes[1],ramp); stepBoss();
     var A=lanes[0],B=lanes[1];
     for(var ci=callouts.length-1;ci>=0;ci--){ callouts[ci].life-=FIXED/1000; if(callouts[ci].life<=0)callouts.splice(ci,1); }
     var totK=A.kills+B.kills, MILES=[100,300,600,1000,1500,2200,3000];
@@ -824,16 +836,7 @@
       if(L.ability==='ORBIT'&&!L.dead){var orbs=4,R=L.r+58;for(var k=0;k<orbs;k++){var a=L.orbAng+k*(Math.PI*2/orbs);var ox=L.cx+Math.cos(a)*R,oy=L.hy+Math.sin(a)*R;ctx.beginPath();ctx.arc(ox,oy,18,0,Math.PI*2);ctx.fillStyle=L.color;ctx.fill();ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=3;ctx.stroke();}}
       // sniper tracer
       if(L.tracer){ctx.save();ctx.strokeStyle=L.color;ctx.globalAlpha=L.tracer.life/5;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(L.cx,L.hy-L.r);ctx.lineTo(L.tracer.x,L.tracer.y);ctx.stroke();ctx.restore();}
-      // boss
-      if(L.boss){var bs=L.boss,pulse=1+Math.sin(bs.ph)*0.04; ctx.save(); ctx.translate(bs.x,bs.y); ctx.scale(pulse,pulse);
-        ctx.beginPath(); ctx.arc(0,0,bs.r,0,Math.PI*2); ctx.fillStyle='#1a0a0a'; ctx.fill(); ctx.lineWidth=8; ctx.strokeStyle=L.color; ctx.stroke();
-        ctx.fillStyle=L.color; for(var sp=0;sp<8;sp++){var sa=bs.ph*0.5+sp*Math.PI/4; ctx.beginPath(); ctx.arc(Math.cos(sa)*bs.r*0.55,Math.sin(sa)*bs.r*0.55,7,0,Math.PI*2); ctx.fill();}
-        ctx.restore();
-        ctx.font='800 34px "Inter",system-ui,sans-serif'; ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=6; ctx.strokeStyle='#000';
-        ctx.strokeText('BOSS',bs.x,bs.y); ctx.fillText('BOSS',bs.x,bs.y);
-        var bw=bs.r*2.2,bx=bs.x-bw/2,by=bs.y-bs.r-26; ctx.fillStyle='rgba(0,0,0,0.6)'; rr(bx-2,by-2,bw+4,16+4,4); ctx.fill();
-        ctx.fillStyle=L.color; rr(bx,by,bw*Math.max(0,bs.hp)/bs.maxhp,16,3); ctx.fill();
-      }
+      // (single centered boss is drawn once, after the lanes — see below)
       // lily pad under the hero (AMPLIFY)
       if(L.flooded){ ctx.save(); ctx.beginPath(); ctx.ellipse(L.cx,L.hy+L.r*0.55,L.r*1.5,L.r*0.62,0,0.5,Math.PI*2+0.5-1.0); ctx.lineTo(L.cx,L.hy+L.r*0.55); ctx.closePath(); ctx.fillStyle='#3f8f3a'; ctx.fill(); ctx.strokeStyle='#2c6b29'; ctx.lineWidth=3; ctx.stroke(); ctx.restore(); }
       // hero
@@ -842,7 +845,15 @@
       else{ctx.save();ctx.globalAlpha=0.4;ctx.beginPath();ctx.arc(L.cx,L.hy,L.r,0,Math.PI*2);ctx.fillStyle='#444';ctx.fill();ctx.restore();ctx.font='800 34px "Inter",system-ui,sans-serif';ctx.fillStyle='#888';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('DOWN',L.cx,L.hy);}
       ctx.restore();
     });
-
+    // ONE centered boss — shared threat for both lanes, looming but dimmed (visual hierarchy)
+    if(boss){ var B=boss, bX=(B.drawX!=null?B.drawX:B.x), bY=(B.drawY!=null?B.drawY:B.y), pulse=1+Math.sin(B.ph)*0.04, bcol=(BOSSES[cfg.bossIdx]||BOSSES[0]).color||'#9a8a7a';
+      ctx.save(); ctx.globalAlpha=0.6; ctx.translate(bX,bY); ctx.scale(pulse,pulse);
+      ctx.beginPath(); ctx.arc(0,0,B.r,0,Math.PI*2); ctx.fillStyle='#1a0a0a'; ctx.fill(); ctx.lineWidth=8; ctx.strokeStyle=bcol; ctx.stroke();
+      ctx.fillStyle=bcol; for(var sp=0;sp<8;sp++){var sa=B.ph*0.5+sp*Math.PI/4; ctx.beginPath(); ctx.arc(Math.cos(sa)*B.r*0.55,Math.sin(sa)*B.r*0.55,7,0,Math.PI*2); ctx.fill();}
+      ctx.restore();
+      ctx.save(); ctx.globalAlpha=0.6; ctx.font='800 34px "Inter",system-ui,sans-serif'; ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.lineWidth=6; ctx.strokeStyle='#000';
+      ctx.strokeText('BOSS',bX,bY); ctx.fillText('BOSS',bX,bY); ctx.restore();
+      drawBossSay(B,bX,bY,30); }
   }
   function drawHUD(){
     ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(W/2,TOPBAR); ctx.lineTo(W/2,H); ctx.stroke();
@@ -946,10 +957,16 @@
       for(i=0;i<e.length;i++){ var en=e[i];
         var gch=en.poop?'\ud83d\udca9':(en.cub?'\ud83d\udc3b':(en.elite?eech:(en.emo||ech)));
         var ge=gch.length>1||gch.codePointAt(0)>0x2100;
-        if(ge){ var esz=Math.ceil(cellH*(en.cub?2.0:(en.poop?1.35:(en.sz||1.55)))); ctx.font='700 '+esz+'px "JetBrains Mono",sans-serif'; ctx.fillStyle='#ffffff'; ctx.fillText(gch, en.x, en.y); }
-        else { ctx.font='700 '+Math.ceil(cellH*1.3)+'px "JetBrains Mono",monospace'; ctx.fillStyle=en.flash>0?'#ffffff':(en.elite?'#ffd60a':'#ff6b5e'); ctx.fillText(gch, en.x, en.y); } }
+        // swarm grunts render slightly smaller + lower-contrast so they read as a TIDE, not focal points;
+        // cubs/elites stay a touch more prominent (render-only — hitboxes/HP/speed are untouched).
+        var swarm=!(en.cub||en.elite||en.poop), ea=swarm?0.78:0.9;
+        if(ge){ var esz=Math.ceil(cellH*(en.cub?2.0:(en.poop?1.35:(en.sz||1.55)))*(swarm?0.9:1)); ctx.font='700 '+esz+'px "JetBrains Mono",sans-serif'; ctx.globalAlpha=ea; ctx.fillStyle='#ffffff'; ctx.fillText(gch, en.x, en.y); ctx.globalAlpha=1; }
+        else { ctx.font='700 '+Math.ceil(cellH*1.3*(swarm?0.92:1))+'px "JetBrains Mono",monospace'; ctx.globalAlpha=ea; ctx.fillStyle=en.flash>0?'#ffffff':(en.elite?'#ffd60a':'#ff6b5e'); ctx.fillText(gch, en.x, en.y); ctx.globalAlpha=1; } }
       ctx.font='700 '+Math.ceil(cellH*0.95)+'px "JetBrains Mono",monospace';
-      for(var ksr=0;ksr<L.skeletons.length;ksr++){ var skk=L.skeletons[ksr],skc=w2c(skk.x),skr=w2r(skk.y); plot(skc,skr,'A','#ece8d6'); plot(skc,skr-1,'o','#ece8d6'); }
+      // each summoned skeleton = one instantly-readable 💀 glyph (render-only; count/HP/lifetime/radius unchanged)
+      ctx.textAlign='center'; ctx.textBaseline='middle'; var skf='700 '+Math.ceil(cellH*1.5)+'px "JetBrains Mono",sans-serif';
+      for(var ksr=0;ksr<L.skeletons.length;ksr++){ var skk=L.skeletons[ksr]; ctx.font=skf; ctx.fillStyle='#ffffff'; ctx.fillText('💀', skk.x, skk.y); }
+      ctx.font='700 '+Math.ceil(cellH*0.95)+'px "JetBrains Mono",monospace';
       for(i=0;i<L.fx.length;i++){ var fxp=L.fx[i],fg=fxp.life>4?fxp.ch:(fxp.life>2?'*':'.'); plot(w2c(fxp.x),w2r(fxp.y),fg,fxp.col); }
       if(L.ability==='SLAP'){ var hands=[L.hand,L.hand2];
         for(var hI=0;hI<hands.length;hI++){ var H2=hands[hI]; if(!H2) continue;
@@ -1006,16 +1023,8 @@
         for(var yb2=0;yb2<L.yarn.length;yb2++){ var bl=L.yarn[yb2]; disc(bl.x,bl.y,bl.r,(L.feral?'@':'o'),ycol); plot(w2c(bl.x),w2r(bl.y),'*','#ffffff'); } }
       if(L.tapes.length){ ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='700 '+Math.ceil(cellH*1.7)+'px "JetBrains Mono",sans-serif';
         for(var vti=0;vti<L.tapes.length;vti++){ var vtp=L.tapes[vti]; ctx.save(); ctx.translate(vtp.x,vtp.y); ctx.rotate(vtp.spin); ctx.fillStyle='#fff'; ctx.fillText('📼',0,0); ctx.restore(); } }
-      if(b){ var BD=BOSSES[cfg.bossIdx]||BOSSES[0], bX=(b.drawX!=null?b.drawX:b.x), bY=(b.drawY!=null?b.drawY:b.y);
-        var shk=(b.flash>0||b.roar>0||b.throw>0)?(Math.random()-0.5)*cellW*0.8:0, bx2=bX+shk, col=b.flash>0?'#ffffff':(b.roar>0?'#ffae5a':(b.throw>0?'#d9b3ff':(BD.color||L.color)));
-        ctx.textAlign='center'; ctx.textBaseline='middle';
-        if(BD.emoji){ ctx.font='700 '+Math.ceil(cellH*2.1)+'px "JetBrains Mono",sans-serif'; ctx.fillStyle='#fff'; ctx.fillText(BD.emoji, bx2, bY); }
-        else { var art=((b.roar>0||b.throw>0)&&BD.artStand)?BD.artStand:(BD.anim?faceRows(b):BD.art), fH=art.length, fW=0; for(var q=0;q<fH;q++){ if(art[q].length>fW)fW=art[q].length; }
-          var bcs=cellH*1.04; ctx.font='700 '+Math.ceil(bcs)+'px "JetBrains Mono",monospace';
-          for(var ri=0;ri<fH;ri++){ var row2=art[ri], yy=bY+(ri-(fH-1)/2)*bcs; for(var ci=0;ci<row2.length;ci++){ var ch2=row2.charAt(ci); if(ch2!==' '){ ctx.fillStyle=col; ctx.fillText(ch2, bx2+(ci-(fW-1)/2)*cellW, yy); } } } }
-        ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='700 '+Math.ceil(cellH*0.58)+'px "JetBrains Mono",sans-serif'; ctx.fillText(BD.name, bX, bY-cellH*3.2);
-        ctx.font='700 '+Math.ceil(cellH*0.95)+'px "JetBrains Mono",monospace'; }
-      { var fig=L.fig, t=elapsed, dead=L.dead;
+      { ctx.font='700 '+Math.ceil(cellH*0.95)+'px "JetBrains Mono",monospace';
+        var fig=L.fig, t=elapsed, dead=L.dead;
         // lily pad under the hero (AMPLIFY)
         if(L.flooded && !dead){ var lpx=L.cx, lpy=L.hy+cellH*1.2, lpr=L.r*1.2, lc0=w2c(lpx-lpr),lc1=w2c(lpx+lpr),lr0=w2r(lpy-lpr*0.6),lr1=w2r(lpy+lpr*0.6);
           for(var lpry=lr0;lpry<=lr1;lpry++)for(var lprx=lc0;lprx<=lc1;lprx++){ var lppx=lprx*cellW+cellW/2,lppy=lpry*cellH+cellH/2,lddx=(lppx-lpx)/lpr,lddy=(lppy-lpy)/(lpr*0.6),lq=lddx*lddx+lddy*lddy; if(lq>1)continue; var lang2=Math.atan2(lppy-lpy,lppx-lpx); if(lang2>0.55&&lang2<1.2)continue; plot(lprx,lpry,(lq>0.5?'o':':'),(lq>0.5?'#2c6b29':'#3f8f3a')); } }
@@ -1054,6 +1063,20 @@
           var fcol=w2c(L.cx)-2+shake+hshk, frow=w2r(L.hy)-2+bob+dip;
           for(var fr2=0;fr2<4;fr2++){ var rs2=rows[fr2]; for(var fc2=0;fc2<rs2.length;fc2++){ var chh2=rs2.charAt(fc2); if(chh2!==' ') plot(fcol+fc2, frow+fr2, chh2, fcl); } } } }
     }
+    // ONE centered boss — the shared threat, drawn once across both lanes. Looming but DIMMED/desaturated
+    // so it recedes behind the heroes (visual hierarchy). Renders with absolute coords (not grid-clipped).
+    if(boss){ var B=boss, BD=BOSSES[cfg.bossIdx]||BOSSES[0], bX=(B.drawX!=null?B.drawX:B.x), bY=(B.drawY!=null?B.drawY:B.y);
+      var shk=(B.flash>0||B.roar>0||B.throw>0)?(Math.random()-0.5)*cellW*0.8:0, bx2=bX+shk;
+      var col=B.flash>0?'#ffffff':(B.roar>0?'#c98a4a':(B.throw>0?'#9a7fb0':(BD.color||'#9a8a7a')));
+      ctx.save(); ctx.globalAlpha=0.6;   // dim so the boss looms without competing with the heroes
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      if(BD.emoji){ ctx.font='700 '+Math.ceil(cellH*2.1)+'px "JetBrains Mono",sans-serif'; ctx.fillStyle='#fff'; ctx.fillText(BD.emoji, bx2, bY); }
+      else { var art=((B.roar>0||B.throw>0)&&BD.artStand)?BD.artStand:(BD.anim?faceRows(B):BD.art), fH=art.length, fW=0; for(var q=0;q<fH;q++){ if(art[q].length>fW)fW=art[q].length; }
+        var bcs=cellH*1.04; ctx.font='700 '+Math.ceil(bcs)+'px "JetBrains Mono",monospace';
+        for(var ri=0;ri<fH;ri++){ var row2=art[ri], yy=bY+(ri-(fH-1)/2)*bcs; for(var ci=0;ci<row2.length;ci++){ var ch2=row2.charAt(ci); if(ch2!==' '){ ctx.fillStyle=col; ctx.fillText(ch2, bx2+(ci-(fW-1)/2)*cellW, yy); } } } }
+      ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='700 '+Math.ceil(cellH*0.58)+'px "JetBrains Mono",sans-serif'; ctx.fillText(BD.name, bX, bY-cellH*3.2);
+      ctx.restore();
+      drawBossSay(B, bX, bY, cellH); }
   }
   function asciiHUD(cols,cellW,cellH){
     ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -1068,9 +1091,10 @@
       var startC=Math.round(cxw/cellW)-Math.round(total/2), topR=Math.round(cyw/cellH)-Math.round(5*sc/2);
       for(var bi=0;bi<str.length;bi++){ var g=FONT5[str.charAt(bi)]; if(!g)continue;
         for(var br=0;br<5;br++){ var rr=g[br]; for(var bc=0;bc<5;bc++){ if(rr.charAt(bc)==='#'){ for(var dr=0;dr<sc;dr++)for(var dc=0;dc<sc;dc++) gpix(startC+bi*per+bc*sc+dc, topR+br*sc+dr, color); } } } } }
-    // center divider, drawn as grid chars
+    // center divider, drawn as grid chars — skips the centered boss so the line doesn't cut through it
     ctx.fillStyle='rgba(159,230,160,0.12)'; ctx.font='700 '+Math.ceil(cellH*0.95)+'px "JetBrains Mono",monospace';
-    for(var yy=300; yy<H-150; yy+=cellH){ ctx.fillText('|', W/2, yy+cellH/2); }
+    var bGap0=boss?boss.y-160:-1, bGap1=boss?boss.y+120:-1;
+    for(var yy=300; yy<H-150; yy+=cellH){ if(boss&&yy>bGap0&&yy<bGap1)continue; ctx.fillText('|', W/2, yy+cellH/2); }
     // Scoreboard kept inside TikTok's safe band: below the top tabs (~140px), and entirely above the
     // bottom caption/nav. name + kills + HP all live up top; nothing critical sits at the bottom edge.
     gtext(W/2, 150, 'WHO SURVIVES?', '#ffffff', 1.35);
@@ -1078,7 +1102,8 @@
     gtext(W/2, 292, elapsed.toFixed(1)+'s', 'rgba(159,230,160,0.5)', 0.7);
     for(var li=0;li<lanes.length;li++){ var L=lanes[li], cx=L.cx, col=L.dead?'#6a6f78':L.color;
       gtext(cx,205,L.name,col,1.5);
-      gtext(cx,253,String(L.kills)+' KILLS','#ffd60a',1.2);
+      // kill count is peripheral HUD: smaller + lower-contrast so it doesn't compete with the action
+      gtext(cx,251,String(L.kills)+' KILLS','rgba(255,214,10,0.62)',0.95);
       // HP bar + ult name sit at the bottom, just below the hero sprite
       var segs=14, fr=Math.max(0,L.hp)/L.maxhp, fl=Math.round(fr*segs), bar='';
       for(var s=0;s<segs;s++) bar+=(s<fl?'\u2588':'\u2591');
@@ -1110,13 +1135,19 @@
         var tag=Lw.hp<Lw.maxhp*0.2?'CLUTCH':(Lw.hp>Lw.maxhp*0.8?'FLAWLESS':null); if(tag) gtext(W/2,H*0.67,tag,Lw.hp<Lw.maxhp*0.2?'#ff5b4a':'#46e2a0',1.3); }
       else bigText(W/2,H*0.46,'DRAW','#ffffff',2); }
   }
-  function drawSay(L){ if(!L.say||L.say.life<=0||L.dead||finished||countdown>0)return; var s=L.say, a=Math.max(0,Math.min(1,s.life*2.2));
-    ctx.save(); ctx.globalAlpha=a; ctx.font='800 30px "Inter",system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    var tw=ctx.measureText(s.txt).width, bw=tw+34, bh=46, bx=L.cx, by=L.hy-L.r-76;
-    if(bx-bw/2<L.x0+10) bx=L.x0+10+bw/2; if(bx+bw/2>L.x0+L.w-10) bx=L.x0+L.w-10-bw/2;
-    ctx.fillStyle='rgba(8,10,12,0.88)'; rr(bx-bw/2,by-bh/2,bw,bh,12); ctx.fill(); ctx.lineWidth=3; ctx.strokeStyle=s.col||L.color; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(L.cx-9,by+bh/2-2); ctx.lineTo(L.cx,by+bh/2+14); ctx.lineTo(L.cx+9,by+bh/2-2); ctx.closePath(); ctx.fillStyle='rgba(8,10,12,0.88)'; ctx.fill();
+  // hero bark: pinned to ONE fixed spot over the hero, quieter (smaller, softer, no loud border) — seasoning, not noise
+  function drawSay(L){ if(!L.say||L.say.life<=0||L.dead||finished||countdown>0)return; var s=L.say, a=Math.max(0,Math.min(1,s.life*2.2))*0.78;
+    ctx.save(); ctx.globalAlpha=a; ctx.font='700 22px "Inter",system-ui,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    var tw=ctx.measureText(s.txt).width, bw=tw+24, bh=34, bx=L.cx, by=L.hy-L.r-72;   // always centered over the hero
+    ctx.fillStyle='rgba(8,10,12,0.7)'; rr(bx-bw/2,by-bh/2,bw,bh,9); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(L.cx-7,by+bh/2-2); ctx.lineTo(L.cx,by+bh/2+10); ctx.lineTo(L.cx+7,by+bh/2-2); ctx.closePath(); ctx.fillStyle='rgba(8,10,12,0.7)'; ctx.fill();
     ctx.fillStyle=s.col||'#ffffff'; ctx.fillText(s.txt,bx,by); ctx.restore(); }
+  // boss caption: one contained line anchored at a fixed spot above the boss — calm, low-key (the boss "speaking")
+  function drawBossSay(B,bX,bY,cellH){ if(!B||!B.say||B.say.life<=0||finished||countdown>0)return; var s=B.say, a=Math.max(0,Math.min(1,s.life*1.6))*0.8;
+    ctx.save(); ctx.globalAlpha=a; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='600 26px "Inter",system-ui,sans-serif';
+    var tw=ctx.measureText(s.txt).width, bw=tw+30, bh=40, cy=bY-cellH*4.7;
+    ctx.fillStyle='rgba(10,8,8,0.66)'; rr(bX-bw/2,cy-bh/2,bw,bh,10); ctx.fill();
+    ctx.fillStyle='rgba(224,206,196,0.92)'; ctx.fillText(s.txt,bX,cy); ctx.restore(); }
   function shake(mag){ shakeT=9; shakeMag=mag; }
   function draw(){
     var sx=0,sy=0; if(shakeT>0){ shakeT--; var sk=shakeMag*(shakeT/9); sx=(Math.random()-0.5)*sk; sy=(Math.random()-0.5)*sk; }
