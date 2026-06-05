@@ -401,7 +401,7 @@
   var ULT_THRESH=0.10;
   var BEAR_GAP=270, ROAR_DUR=72, SURV_CAP=160, HOOK_DUR=2.6;  // cold-open hook overlay duration (s)
   var SLAM_DUR=0.5;     // name slam-in animation duration (s); lane B is staggered slightly after A
-  var INTRO_DUR=1.6;    // "WHO CAN LAST?" intro card duration (s) before the battle cold-opens
+  var INTRO_DUR=1.6;    // "WHO LASTS LONGER?" intro card duration (s) before the battle cold-opens
   var SLAM_LAND=0.34;   // point within a name's slam where it "lands" (triggers the impact shake)
   var GRUDGE_GAP=220, THROW_DUR=20, GRUDGE_DOT=12, GRUDGE_DOT_SECS=7;  // VHS tape: dmg/sec for 7s
   var SPRITES={
@@ -861,7 +861,7 @@
     ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(0,TOPBAR); ctx.lineTo(W,TOPBAR); ctx.stroke();
     ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.font='800 50px "Inter",system-ui,sans-serif'; ctx.lineWidth=9; ctx.strokeStyle='#000'; ctx.fillStyle='#fff';
-    ctx.strokeText('WHO SURVIVES?',W/2,150); ctx.fillText('WHO SURVIVES?',W/2,150);
+    ctx.strokeText('WHO LASTS LONGER?',W/2,150); ctx.fillText('WHO LASTS LONGER?',W/2,150);
     ctx.font='800 38px "Inter",system-ui,sans-serif'; ctx.fillStyle='#ffd60a'; ctx.strokeText('VS',W/2,205); ctx.fillText('VS',W/2,205);
     lanes.forEach(function(L){ ctx.save(); ctx.beginPath(); ctx.rect(L.x0,0,L.w,H); ctx.clip(); header(L); bottomStats(L); ctx.restore(); });
     ctx.font='500 24px "JetBrains Mono",monospace'; ctx.textAlign='center'; ctx.fillStyle='rgba(159,230,160,0.6)'; ctx.textBaseline='middle'; ctx.fillText(elapsed.toFixed(1)+'s',W/2,292);
@@ -871,8 +871,10 @@
         ctx.strokeText('!! BOSS ALERT !!',W/2,H*0.46); ctx.fillText('!! BOSS ALERT !!',W/2,H*0.46); } }
     if(phase==='intro'){ var iie=INTRO_DUR-introT, ifo=Math.max(0,Math.min(1,introT/0.35)); ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.globalAlpha=0.66*ifo; ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H); ctx.globalAlpha=ifo;
-      ctx.font='800 84px "Inter",system-ui,sans-serif'; ctx.lineWidth=14; ctx.strokeStyle='#000'; ctx.fillStyle='#fff';
-      ctx.strokeText('WHO CAN LAST?',W/2,H*0.29); ctx.fillText('WHO CAN LAST?',W/2,H*0.29);
+      ctx.font='800 40px "Inter",system-ui,sans-serif'; ctx.lineWidth=8; ctx.strokeStyle='#000'; ctx.fillStyle='#ffd60a';
+      ctx.strokeText('SAME BOSS · SAME HORDE',W/2,H*0.225); ctx.fillText('SAME BOSS · SAME HORDE',W/2,H*0.225);
+      ctx.font='800 80px "Inter",system-ui,sans-serif'; ctx.lineWidth=14; ctx.strokeStyle='#000'; ctx.fillStyle='#fff';
+      ctx.strokeText('WHO LASTS LONGER?',W/2,H*0.29); ctx.fillText('WHO LASTS LONGER?',W/2,H*0.29);
       for(var iil=0;iil<lanes.length;iil++){ var Lii=lanes[iil], ism=nameSlam(iil,iie); if(ism.mode==='pre')continue;
         var insz=Math.round(74*((ism.mode==='slam')?ism.mult:1)), iny=H*0.44+((ism.mode==='slam')?ism.dy:0); ctx.globalAlpha=ifo*((ism.mode==='slam')?ism.alpha:1);
         ctx.font='800 '+insz+'px "Inter",system-ui,sans-serif'; ctx.lineWidth=12; ctx.strokeStyle='#000'; ctx.fillStyle=(ism.white?'#fff':Lii.color);
@@ -1099,7 +1101,7 @@
     for(var yy=300; yy<H-150; yy+=cellH){ if(boss&&yy>bGap0&&yy<bGap1)continue; ctx.fillText('|', W/2, yy+cellH/2); }
     // Scoreboard kept inside TikTok's safe band: below the top tabs (~140px), and entirely above the
     // bottom caption/nav. name + kills + HP all live up top; nothing critical sits at the bottom edge.
-    gtext(W/2, 150, 'WHO SURVIVES?', '#ffffff', 1.35);
+    gtext(W/2, 150, 'WHO LASTS LONGER?', '#ffffff', 1.3);
     gtext(W/2, 205, 'VS', '#46e2a0', 1.2);
     gtext(W/2, 292, elapsed.toFixed(1)+'s', 'rgba(159,230,160,0.5)', 0.7);
     gtext(W/2, 320, 'WAVE '+Math.max(1,waveNo), 'rgba(159,230,160,0.4)', 0.66);  // shared, subtle escalation readout
@@ -1120,10 +1122,12 @@
     if(phase==='alert'){ var on=Math.floor(elapsed*6)%2===0;
       ctx.fillStyle='rgba(255,60,50,'+(on?0.16:0.06)+')'; ctx.fillRect(0,0,W,H);
       if(on){ bigText(W/2,H*0.40,'BOSS','#ff5b4a',2); bigText(W/2,H*0.54,'ALERT','#ff5b4a',2); } }
-    // INTRO CARD: "WHO CAN LAST?" with the matchup names slamming in, before the battle starts
+    // INTRO CARD: establish the shared boss/horde, then the matchup names slam in. It's a RACE, not a duel:
+    // both face the SAME executioner — who outlasts who?
     if(phase==='intro'){ var ie=INTRO_DUR-introT, fo=Math.max(0,Math.min(1,introT/0.35));
       ctx.save(); ctx.globalAlpha=0.66*fo; ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H); ctx.globalAlpha=fo;
-      gtext(W/2,H*0.29,'WHO CAN LAST?','#ffffff',2.1);
+      gtext(W/2,H*0.225,'SAME BOSS · SAME HORDE','rgba(255,214,10,0.9)',0.95);
+      gtext(W/2,H*0.29,'WHO LASTS LONGER?','#ffffff',1.95);
       for(var il=0;il<lanes.length;il++){ var Li=lanes[il], sm=nameSlam(il,ie); if(sm.mode==='pre')continue;
         var msc=(sm.mode==='slam')?sm.mult:1, mdy=(sm.mode==='slam')?sm.dy:0; ctx.globalAlpha=fo*((sm.mode==='slam')?sm.alpha:1);
         gtext(Li.cx, H*0.44+mdy, Li.name, (sm.white?'#ffffff':Li.color), 1.7*msc); }
@@ -1207,7 +1211,7 @@
   document.addEventListener('pointerdown',function(e){ var t=e.target; if(t&&(t.tagName==='BUTTON'||t.tagName==='SELECT'||t.tagName==='INPUT'||t.tagName==='LABEL')) stopAttract(); },true);
   document.getElementById('roll').onclick=function(){ stopAttract(); rollMatchup(); reset(); };
   function begin(){ stopAttract(); ensureAudio(); if(AC&&AC.state==='suspended')AC.resume(); reset(); if(cfg.autorec)startRec();
-    // Short "WHO CAN LAST?" intro card (names slam in, with an impact shake on each landing), then the
+    // Short "WHO LASTS LONGER?" intro card (names slam in, with an impact shake on each landing), then the
     // battle cold-opens — no 3-2-1 freeze, but a beat to read the matchup before the chaos.
     countdown=0; running=false; finished=false; phase='intro'; alertT=0; introT=INTRO_DUR; slamA=false; slamB=false; var i0=performance.now();
     (function intro(){ if(phase!=='intro') return;  // reset/attract interrupted the intro
