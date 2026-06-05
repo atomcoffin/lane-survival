@@ -961,8 +961,9 @@
       if(li===0){ clipLo=0; clipHi=mid-1; } else { clipLo=mid; clipHi=cols-1; }
       drawEntrance(L);
       // AMPLIFY flood: rippling water across the whole lane
-      if(L.flooded){ var wfr0=w2r(FIELD_TOP), wtn=elapsed, wgl=['~','-','='];
-        for(var wfr=wfr0;wfr<rows;wfr++)for(var wfc=clipLo;wfc<=clipHi;wfc++){ var wv=Math.sin(wfc*0.6+wfr*0.9+wtn*2.2); if(wv<0.45)continue; plot(wfc,wfr,wgl[(wfc+wfr)%3],(wv>0.82?'#6fbdf0':'#2f6fb0')); }
+      if(L.flooded){ var wfr0=w2r(FIELD_TOP), wtn=elapsed, wgl=['~','-','~','='];
+        // horizontal swells that ripple side-to-side and roll bottom->top (matches the surge attack), kept faint
+        for(var wfr=wfr0;wfr<rows;wfr++)for(var wfc=clipLo;wfc<=clipHi;wfc++){ var wv=Math.sin(wfr*0.7 + Math.sin(wfc*0.33+wtn*0.8)*0.85 + wtn*2.2); if(wv<0.6)continue; plot(wfc,wfr,wgl[(wfc+wfr)%wgl.length],(wv>0.92?'#4f93c4':'#27557f')); }
         if(L.surge>=0){ var steps=Math.max(16,Math.round(L.surge*0.22)); for(var sg=0;sg<=steps;sg++){ var sgan=Math.PI+(sg/steps)*Math.PI, sgx=L.cx+Math.cos(sgan)*L.surge, sgy=L.hy+Math.sin(sgan)*L.surge; if(sgy<FIELD_TOP)continue; plot(w2c(sgx),w2r(sgy),'~','#cfeeff'); plot(w2c(sgx),w2r(sgy)-1,'o','#eaf7ff'); } } }
       occ={}; e.sort(byYDesc);
       var ech=cfg.enemyChar||'&'; var bk0=(BOSSES[cfg.bossIdx]||{}).kind; if(bk0&&BENEMY[bk0]&&(cfg.enemyChar==='&'||!cfg.enemyChar)) ech=BENEMY[bk0];
